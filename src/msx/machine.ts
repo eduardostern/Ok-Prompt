@@ -37,6 +37,14 @@ export interface Bios {
   logo?: Uint8Array;
 }
 
+/** Throws unless `rom` looks like an MSX1 BIOS: 16K-64K, starting with DI. */
+export function checkBios(rom: Uint8Array): void {
+  if (rom.length < 0x4000 || rom.length > 0x10000 || rom.length % 0x2000) {
+    throw new Error("an MSX1 BIOS is 16K to 64K (the Expert's is 32K)");
+  }
+  if (rom[0] !== 0xf3) throw new Error('it does not start like an MSX BIOS (DI at 0000h)');
+}
+
 export class Msx {
   readonly cpu = new Z80();
   readonly slots = new Slots();
@@ -53,9 +61,7 @@ export class Msx {
   constructor(bios: Bios, sampleRate = 44100) {
     this.sampleRate = sampleRate;
     this.psg = new Psg(CPU_CLOCK, sampleRate);
-    const rom = new Rom().place(0x0000, bios.main);
-    if (bios.logo) rom.place(0x8000, bios.logo);
-    this.slots.insert(0, rom);
+    this.setBios(bios);
     this.slots.insert(3, this.ram);
 
     const cpu = this.cpu;
@@ -68,6 +74,16 @@ export class Msx {
       this.psg.click = level;
     };
     this.reset();
+  }
+
+  /**
+   * Puts a system ROM in slot 0: C-BIOS, or a real machine's BIOS and BASIC
+   * (32K at 0000h, such as the Gradiente Expert's). Power-cycle to boot it.
+   */
+  setBios(bios: Bios): void {
+    const rom = new Rom().place(0x0000, bios.main);
+    if (bios.logo) rom.place(0x8000, bios.logo);
+    this.slots.insert(0, rom);
   }
 
   /** Plugs a cartridge into port 1 or 2 (null takes it out). Reset to use it. */

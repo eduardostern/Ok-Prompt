@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Cartridge, guessMapper, plainBase } from '../src/msx/cartridge';
-import { Msx } from '../src/msx/machine';
+import { checkBios, Msx } from '../src/msx/machine';
 import { msxKey } from '../src/msx/keyboard';
 import { Ppi } from '../src/msx/ppi';
 import { Scc } from '../src/msx/scc';
@@ -287,5 +287,38 @@ describe('the machine', () => {
     m.reset();
     for (let i = 0; i < 180; i++) m.runFrame();
     expect(screenText(m)).toContain('HELLO FROM OK-PROMPT');
+  });
+
+  it('boots a system ROM of the player\'s own in place of C-BIOS', () => {
+    // A 32K "BIOS" that writes "Ok" at VRAM 0000h through the VDP, then loops.
+    const own = new Uint8Array(0x8000).fill(0xff);
+    own.set([
+      0xf3, //             DI
+      0xaf, //             XOR A
+      0xd3, 0x99, //       OUT (99h),A   address low
+      0x3e, 0x40, //       LD A,40h
+      0xd3, 0x99, //       OUT (99h),A   address high, write mode
+      0x3e, 0x4f, //       LD A,'O'
+      0xd3, 0x98, //       OUT (98h),A
+      0x3e, 0x6b, //       LD A,'k'
+      0xd3, 0x98, //       OUT (98h),A
+      0x18, 0xfe, //       JR $
+    ]);
+    expect(() => checkBios(own)).not.toThrow();
+    expect(() => checkBios(BIOS.main)).not.toThrow();
+    expect(() => checkBios(new Uint8Array(0x8000))).toThrow(/DI/);
+    expect(() => checkBios(new Uint8Array(0x1000).fill(0xf3))).toThrow(/32K/);
+
+    const m = new Msx(BIOS);
+    m.setBios({ main: own });
+    m.powerCycle();
+    m.runFrame();
+    expect(String.fromCharCode(m.vdp.vram[0], m.vdp.vram[1])).toBe('Ok');
+    expect(m.slots.read(0x8000)).toBe(0xff); // no C-BIOS logo ROM left behind
+
+    m.setBios(BIOS); // and back to C-BIOS
+    m.powerCycle();
+    for (let i = 0; i < 300; i++) m.runFrame();
+    expect(screenText(m)).toMatch(/cartridge/i);
   });
 });

@@ -36,6 +36,18 @@
               <option value="4">4x</option>
             </select>
           </label>
+          <label class="field">System ROM
+            <select id="bios">
+              <option value="cbios">C-BIOS 0.29 (built in)</option>
+            </select>
+          </label>
+          <div class="btn-row">
+            <button id="bios-load" class="key-btn" type="button">Load BIOS…</button>
+            <button id="bios-remove" class="key-btn" type="button" hidden>Remove</button>
+          </div>
+          <p class="note" id="bios-note">C-BIOS starts cartridges only. For MSX BASIC, load a dump of your own
+            machine's ROM, such as the Gradiente Expert's (32K). It stays in this browser.</p>
+          <input id="bios-file" type="file" accept=".rom,.bin,.zip" hidden />
           <dl class="readout">
             <dt>Frames</dt><dd id="fps">–</dd>
             <dt>CPU</dt><dd id="mhz">–</dd>
@@ -77,6 +89,12 @@
               <button class="eject" type="button" data-action="eject" title="Eject">⏏</button>
             </div>
             <input id="rom-file" type="file" accept=".rom,.mx1,.mx2,.bin,.zip" hidden />
+          </div>
+
+          <div class="shelf" aria-label="Cartridge shelf">
+            <h2>Shelf</h2>
+            <ul id="shelf-list"></ul>
+            <p class="note" id="shelf-empty">Every ROM you load waits here. Click one to put it in slot 1.</p>
           </div>
         </section>
 

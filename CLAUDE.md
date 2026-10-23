@@ -37,7 +37,7 @@ exerciser after any change to `src/z80.ts`.
 | `src/msx/ppi.ts` | 8255: slot register, keyboard rows, click |
 | `src/msx/keyboard.ts` | PC `KeyboardEvent.code` to the MSX matrix |
 | `src/main.ts` | Page wiring, frame loop, cartridges, keys, gamepad |
-| `src/ui/` | Audio, power switch (from A-Prompt), sound output, IndexedDB cartridges, confirm dialog |
+| `src/ui/` | Audio, power switch (from A-Prompt), sound output, IndexedDB store (slots, shelf, own BIOS), confirm dialog |
 | `src/roms/` | C-BIOS MSX1 main and logo ROMs, with their licence |
 
 ## MSX facts that are easy to get wrong

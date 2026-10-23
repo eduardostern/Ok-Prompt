@@ -8,12 +8,13 @@ import mainRomUrl from './roms/cbios_main_msx1.rom?url';
 import logoRomUrl from './roms/cbios_logo_msx1.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { msxKey, SPECIAL_KEYS } from './msx/keyboard';
-import { CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
+import { checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
 import { HEIGHT, WIDTH } from './msx/vdp';
 import { audioContext } from './ui/audio';
+import { askConfirm } from './ui/confirm';
 import { waitForPower, warmUp } from './ui/power';
 import { SoundOut } from './ui/sound-out';
-import { loadCart, saveCart, StoredCart } from './ui/store';
+import { loadBios, loadCart, loadShelf, saveBios, saveCart, shelve, StoredCart, unshelve } from './ui/store';
 
 const SAMPLE_RATE = 44100;
 const MAX_ROM = 4 * 1024 * 1024;
@@ -33,11 +34,13 @@ interface Settings {
   humbar: boolean;
   volume: number;
   autoPower: boolean;
+  /** The system ROM: the built-in C-BIOS or the player's own. */
+  bios: 'cbios' | 'own';
 }
 
 const DEFAULTS: Settings = {
   region: 'ntsc', speed: 1, smooth: false, scanlines: true, curve: true,
-  flicker: false, humbar: false, volume: 70, autoPower: false,
+  flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios',
 };
 
 function loadSettings(): Settings {
@@ -65,7 +68,10 @@ async function bytes(url: string): Promise<Uint8Array> {
 
 async function start(): Promise<void> {
   const [main, logo] = await Promise.all([bytes(mainRomUrl), bytes(logoRomUrl)]);
-  const msx = new Msx({ main, logo }, SAMPLE_RATE);
+  const cbios = { main, logo };
+  const msx = new Msx(cbios, SAMPLE_RATE);
+  let ownBios = await loadBios();
+  if (settings.bios === 'own' && ownBios) msx.setBios({ main: ownBios.data });
   const sound = new SoundOut(SAMPLE_RATE);
   const wrap = $('screen-wrap');
   const canvas = $<HTMLCanvasElement>('screen');
@@ -167,11 +173,12 @@ async function start(): Promise<void> {
     msx.insert(n, stored ? new Cartridge(stored.data, stored.mapper as Mapper | undefined, stored.name) : null);
     if (persist) void saveCart(n, stored);
     showSlot(n);
+    markShelf();
     if (running) msx.reset();
   };
 
   /** A ROM from a file: unzipped if needed. */
-  const readRom = async (file: File): Promise<StoredCart> => {
+  const readRom = async (file: File, max = MAX_ROM, what = 'an MSX cartridge'): Promise<StoredCart> => {
     let data = new Uint8Array(await file.arrayBuffer());
     let name = file.name;
     if (/\.zip$/i.test(name)) {
@@ -180,13 +187,16 @@ async function start(): Promise<void> {
       if (!pick) throw new Error('no ROM inside the zip');
       [name, data] = pick;
     }
-    if (data.length > MAX_ROM) throw new Error('too big for an MSX cartridge');
+    if (data.length > max) throw new Error(`too big for ${what}`);
     return { name: name.replace(/^.*\//, ''), data };
   };
 
   const load = async (file: File, n: 1 | 2) => {
     try {
-      insert(n, await readRom(file));
+      const rom = await readRom(file);
+      insert(n, rom);
+      await shelve(rom);
+      void showShelf();
       if (!running) await powerOn();
     } catch (e) {
       alertSlot(n, `Could not load ${file.name}: ${(e as Error).message}`);
@@ -229,10 +239,108 @@ async function start(): Promise<void> {
     if (file) void load(file, 1);
   });
 
+  // ---- the shelf: every cartridge loaded before ---------------------------
+
+  const shelfList = $('shelf-list');
+  /** Highlights the shelf entries that are in a slot. */
+  function markShelf(): void {
+    const inSlots = msx.cartridges.map((c) => c?.name);
+    for (const li of shelfList.children) {
+      li.classList.toggle('inserted', inSlots.includes((li as HTMLElement).dataset.name));
+    }
+  }
+  async function showShelf(): Promise<void> {
+    const carts = await loadShelf();
+    shelfList.replaceChildren(...carts.map((cart) => {
+      const li = document.createElement('li');
+      li.dataset.name = cart.name;
+      const button = (cls: string, text: string, title: string, onClick: () => void) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = cls;
+        b.textContent = text;
+        b.title = title;
+        b.addEventListener('click', onClick);
+        li.append(b);
+      };
+      const put = async (n: 1 | 2) => {
+        insert(n, cart);
+        if (!running) await powerOn();
+      };
+      button('shelf-cart', cart.name, `Insert ${cart.name} in slot 1`, () => void put(1));
+      button('shelf-slot', '2', 'Insert in slot 2', () => void put(2));
+      button('shelf-del', '×', 'Take it off the shelf', async () => {
+        const yes = await askConfirm({
+          title: 'Take it off the shelf?',
+          message: `${cart.name} will be forgotten by this browser. Load the file again to bring it back.`,
+          ok: 'Remove',
+        });
+        if (!yes) return;
+        await unshelve(cart.name);
+        void showShelf();
+      });
+      return li;
+    }));
+    markShelf();
+  }
+
   for (const n of [1, 2] as const) {
     const stored = await loadCart(n);
-    if (stored) insert(n, stored, false);
+    if (stored) {
+      insert(n, stored, false);
+      await shelve(stored); // cartridges from before the shelf existed
+    }
   }
+  await showShelf();
+
+  // ---- the system ROM ------------------------------------------------------
+
+  const biosSel = $<HTMLSelectElement>('bios');
+  const biosFile = $<HTMLInputElement>('bios-file');
+  const biosNote = $('bios-note');
+  const biosNoteText = biosNote.textContent;
+  const showBios = () => {
+    while (biosSel.options.length > 1) biosSel.remove(1);
+    if (ownBios) biosSel.add(new Option(ownBios.name, 'own'));
+    biosSel.value = settings.bios === 'own' && ownBios ? 'own' : 'cbios';
+    $('bios-remove').hidden = !ownBios;
+  };
+  const useBios = async (which: 'cbios' | 'own') => {
+    settings.bios = which;
+    save();
+    msx.setBios(which === 'own' && ownBios ? { main: ownBios.data } : cbios);
+    showBios();
+    if (running) await powerOn();
+  };
+  biosSel.addEventListener('change', () => void useBios(biosSel.value as 'cbios' | 'own'));
+  $('bios-load').addEventListener('click', () => biosFile.click());
+  biosFile.addEventListener('change', async () => {
+    const file = biosFile.files?.[0];
+    biosFile.value = '';
+    if (!file) return;
+    try {
+      const rom = await readRom(file, 0x10000, 'an MSX1 system ROM');
+      checkBios(rom.data);
+      ownBios = rom;
+      await saveBios(rom);
+      biosNote.textContent = biosNoteText;
+      await useBios('own');
+    } catch (e) {
+      biosNote.textContent = `Could not use ${file.name}: ${(e as Error).message}`;
+    }
+  });
+  $('bios-remove').addEventListener('click', async () => {
+    const yes = await askConfirm({
+      title: 'Remove your BIOS?',
+      message: `${ownBios?.name} will be forgotten by this browser and the MSX goes back to C-BIOS.`,
+      ok: 'Remove',
+    });
+    if (!yes) return;
+    ownBios = undefined;
+    await saveBios(null);
+    await useBios('cbios');
+  });
+  showBios();
 
   // ---- keyboard and gamepad ------------------------------------------------
 

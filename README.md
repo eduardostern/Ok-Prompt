@@ -27,6 +27,11 @@ npm run build      # static site in dist/
   after that). *Power on by itself* skips it.
 - Drop a `.rom` (or a `.zip` with one inside) anywhere on the page, or
   click a cartridge slot. Slots are remembered in this browser.
+- Every ROM you load stays on the shelf under the slots: click it to put
+  it back in slot 1, or on its 2 for slot 2.
+- *System ROM* swaps C-BIOS for a BIOS dump of your own (16K-64K, such as
+  the Gradiente Expert's 32K ROM) to boot into MSX BASIC. It stays in your
+  browser; Ok-Prompt never ships copyrighted ROMs.
 - The bank-switching scheme of big cartridges is guessed from the code;
   change it under the cartridge if a game does not start.
 - The PC keyboard is the MSX keyboard: GRAPH is left Alt, CODE right Alt,

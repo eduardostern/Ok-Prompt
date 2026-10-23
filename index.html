@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Ok-Prompt · an MSX in your browser</title>
+    <meta name="description" content="Ok-Prompt is an MSX1 emulator for the browser: a Z80, the TMS9918A video chip and the AY-3-8910 sound chip. Drop in a cartridge and play." />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="room">
+      <header class="top">
+        <h1 class="brand"><span class="ok">Ok</span>-Prompt</h1>
+        <p class="tag">An MSX in your browser. Drop in a cartridge and play.</p>
+      </header>
+
+      <main class="stage">
+        <!-- Left: the machine -->
+        <aside class="panel" aria-label="Machine">
+          <h2>Machine</h2>
+          <div class="btn-row">
+            <button id="power" class="key-btn power-btn" type="button" aria-pressed="false">⏻ Power</button>
+            <button id="reset" class="key-btn" type="button">↻ Reset</button>
+          </div>
+          <label class="field">Region
+            <select id="region">
+              <option value="ntsc">NTSC, 60 Hz</option>
+              <option value="pal">PAL, 50 Hz</option>
+            </select>
+          </label>
+          <label class="field">Speed
+            <select id="speed">
+              <option value="1">Normal</option>
+              <option value="2">2x</option>
+              <option value="4">4x</option>
+            </select>
+          </label>
+          <dl class="readout">
+            <dt>Frames</dt><dd id="fps">–</dd>
+            <dt>CPU</dt><dd id="mhz">–</dd>
+            <dt>Caps</dt><dd><i id="caps" class="lamp"></i></dd>
+          </dl>
+          <label class="check"><input type="checkbox" id="auto-power" /> Power on by itself</label>
+        </aside>
+
+        <!-- Centre: the monitor and the console -->
+        <section class="center">
+          <div class="monitor">
+            <div class="screen-wrap" id="screen-wrap">
+              <canvas id="screen" width="288" height="224" aria-label="MSX screen"></canvas>
+              <div class="crt-roll" aria-hidden="true"></div>
+              <div class="crt-flicker" aria-hidden="true"></div>
+              <div class="drop-hint" aria-hidden="true">Drop a cartridge to play</div>
+            </div>
+            <div class="bezel-foot">
+              <span class="badge">Ok-Prompt</span>
+              <i id="power-lamp" class="lamp power-lamp" title="Power"></i>
+            </div>
+          </div>
+
+          <div class="deck" aria-label="Cartridge slots">
+            <div class="slot" data-slot="1">
+              <span class="slot-no">1</span>
+              <button class="cart" type="button" data-action="load" title="Insert a cartridge (.rom or .zip)">
+                <span class="cart-label">Empty: click or drop a ROM</span>
+              </button>
+              <select class="mapper" aria-label="Bank switching of slot 1"></select>
+              <button class="eject" type="button" data-action="eject" title="Eject">⏏</button>
+            </div>
+            <div class="slot" data-slot="2">
+              <span class="slot-no">2</span>
+              <button class="cart" type="button" data-action="load" title="Insert a cartridge (.rom or .zip)">
+                <span class="cart-label">Empty: click or drop a ROM</span>
+              </button>
+              <select class="mapper" aria-label="Bank switching of slot 2"></select>
+              <button class="eject" type="button" data-action="eject" title="Eject">⏏</button>
+            </div>
+            <input id="rom-file" type="file" accept=".rom,.mx1,.mx2,.bin,.zip" hidden />
+          </div>
+        </section>
+
+        <!-- Right: display, sound, controls -->
+        <aside class="panel" aria-label="Settings">
+          <h2>Display</h2>
+          <label class="check"><input type="checkbox" id="smooth" /> Smooth pixels</label>
+          <label class="check"><input type="checkbox" id="scanlines" /> Scanlines</label>
+          <label class="check"><input type="checkbox" id="curve" /> Curved glass</label>
+          <label class="check"><input type="checkbox" id="flicker" /> Flicker</label>
+          <label class="check"><input type="checkbox" id="humbar" /> Hum bar</label>
+          <button id="fullscreen" class="key-btn" type="button">⛶ Full screen</button>
+
+          <h2>Sound</h2>
+          <label class="field">Volume
+            <input id="volume" type="range" min="0" max="100" value="70" />
+          </label>
+
+          <h2>Controls</h2>
+          <p class="note">The keyboard is the MSX keyboard. Arrow keys and Space work in most games.</p>
+          <dl class="keys" id="special-keys"></dl>
+          <p class="note" id="gamepad">No gamepad. Plug one in and press a button.</p>
+        </aside>
+      </main>
+
+      <footer class="foot">
+        Ok-Prompt · © 2026 Eduardo Stern · Z80 core from
+        <a href="https://a-prompt.stern.workers.dev">A-Prompt</a> ·
+        BIOS: <a href="http://cbios.sourceforge.net/">C-BIOS</a> (BSD licence) ·
+        MSX is a trademark of MSX Licensing Corporation
+      </footer>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

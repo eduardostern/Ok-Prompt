@@ -4,6 +4,7 @@ import { Cartridge, guessMapper, plainBase } from '../src/msx/cartridge';
 import { Msx } from '../src/msx/machine';
 import { msxKey } from '../src/msx/keyboard';
 import { Ppi } from '../src/msx/ppi';
+import { Scc } from '../src/msx/scc';
 import { Psg } from '../src/msx/psg';
 import { Ram, Rom, Slots } from '../src/msx/slots';
 import { BORDER_X, BORDER_Y, PALETTE, Vdp, WIDTH } from '../src/msx/vdp';
@@ -91,6 +92,92 @@ describe('cartridges', () => {
     const scc = new Cartridge(r, 'konamiscc');
     scc.write(0xb000, 12);
     expect(scc.read(0xa000)).toBe(12);
+  });
+});
+
+describe('SCC', () => {
+  /** A Konami SCC cartridge whose 8K bank n is filled with n. */
+  const sccCart = () => {
+    const r = new Uint8Array(0x80000);
+    for (let b = 0; b < 64; b++) r.fill(b, b * 0x2000, (b + 1) * 0x2000);
+    return new Cartridge(r, 'konamiscc');
+  };
+  /** Channel `ch`: a square wave, the period, full volume, enabled. */
+  const square = (c: Cartridge, ch: number, period: number) => {
+    for (let i = 0; i < 32; i++) c.write(0x9800 + Math.min(ch, 3) * 32 + i, i < 16 ? 0x7f : 0x80);
+    c.write(0x9880 + ch * 2, period & 0xff);
+    c.write(0x9881 + ch * 2, period >> 8);
+    c.write(0x988a + ch, 15);
+    c.write(0x988f, 1 << ch);
+  };
+  const rising = (s: Float32Array) => {
+    let n = 0;
+    for (let i = 1; i < s.length; i++) if (s[i] > 0 && s[i - 1] <= 0) n++;
+    return n;
+  };
+
+  it('shows its registers at 9800h only while bank 3Fh is at 8000h', () => {
+    const c = sccCart();
+    c.write(0x9000, 0x3e);
+    c.write(0x9800, 0x55);
+    expect(c.read(0x9800)).toBe(0x3e); // ROM
+    expect(c.scc!.wave[0]).toBe(0);
+    c.write(0x9000, 0x3f);
+    expect(c.read(0x9800)).toBe(0); // the SCC's wave RAM, not bank 3Fh
+    c.write(0x9800, 0x55);
+    expect(c.read(0x9800)).toBe(0x55);
+    expect(c.read(0x9900)).toBe(0x55); // 256-byte mirror
+    expect(c.read(0x9000)).toBe(0x3f); // the rest of the bank is still ROM
+    c.write(0xb000, 7); // bank switching still works
+    expect(c.read(0xa000)).toBe(7);
+  });
+
+  it('decodes periods, volumes, enable and their mirror at 90h', () => {
+    const c = sccCart();
+    c.write(0x9000, 0x3f);
+    c.write(0x9882, 0x34);
+    c.write(0x9893, 0x12); // mirror of 9883h
+    c.write(0x988c, 0x1a);
+    c.write(0x989f, 0xff);
+    const scc = c.scc!;
+    expect(scc.period[1]).toBe(0x234);
+    expect(scc.volume[2]).toBe(0x0a);
+    expect(scc.enable).toBe(0x1f);
+    expect(c.read(0x9880)).toBe(0xff); // write-only
+  });
+
+  it('plays a channel at CPU / (32 x (period + 1))', () => {
+    const c = sccCart();
+    c.write(0x9000, 0x3f);
+    square(c, 0, 253); // 3579545 / 32 / 254 = 440 Hz
+    c.scc!.advanceTo(3_579_545);
+    const n = rising(c.scc!.take());
+    expect(n).toBeGreaterThan(435);
+    expect(n).toBeLessThan(445);
+  });
+
+  it('plays channel 4\'s wave on channel 5 and keeps disabled channels quiet', () => {
+    const scc = new Scc();
+    for (let i = 0; i < 32; i++) scc.write(0x60 + i, i < 16 ? 100 : -100);
+    scc.write(0x88, 200);
+    scc.write(0x8e, 15);
+    scc.advanceTo(100_000);
+    expect(scc.take().every((v) => v === 0)).toBe(true); // not enabled yet
+    scc.write(0x8f, 0x10);
+    scc.advanceTo(200_000);
+    expect(rising(scc.take())).toBeGreaterThan(10);
+  });
+
+  it('is mixed into the machine\'s sound', () => {
+    const m = new Msx(BIOS);
+    const c = sccCart();
+    m.insert(1, c);
+    c.write(0x9000, 0x3f);
+    square(c, 0, 253);
+    m.runFrame();
+    const s = m.takeAudio();
+    expect(s.length).toBeGreaterThan(700);
+    expect(rising(s)).toBeGreaterThan(5);
   });
 });
 

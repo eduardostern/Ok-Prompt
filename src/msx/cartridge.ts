@@ -6,7 +6,8 @@
  * - Konami (no SCC): 8K banks; 4000h fixed to bank 0, writes to 6000h, 8000h
  *   and A000h pick the banks at 6000h, 8000h and A000h.
  * - Konami SCC: 8K banks; writes to 5000h, 7000h, 9000h, B000h pick the banks
- *   at 4000h, 6000h, 8000h, A000h. (The SCC sound chip is not emulated yet.)
+ *   at 4000h, 6000h, 8000h, A000h. Bank 3Fh at 8000h also brings up the SCC
+ *   sound chip's registers at 9800h-9FFFh (see scc.ts).
  * - ASCII 8K: writes to 6000h, 6800h, 7000h, 7800h pick 8K banks for 4000h,
  *   6000h, 8000h, A000h.
  * - ASCII 16K: writes to 6000h and 7000h pick 16K banks for 4000h and 8000h.
@@ -15,6 +16,7 @@
  * LD (nnnn),A instructions aimed at each scheme's addresses, as fMSX and
  * openMSX do; the UI lets the player override it.
  */
+import { Scc } from './scc';
 import type { SlotDevice } from './slots';
 
 export type Mapper = 'plain' | 'konami' | 'konamiscc' | 'ascii8' | 'ascii16';
@@ -70,6 +72,8 @@ export function guessMapper(rom: Uint8Array): Mapper {
 
 export class Cartridge implements SlotDevice {
   readonly mapper: Mapper;
+  /** The SCC sound chip, in Konami SCC cartridges. */
+  readonly scc: Scc | null;
   /** Bank number in each 8K window of 4000h-BFFFh (16K mappers use two). */
   private banks = [0, 1, 2, 3];
   private base = 0x4000;
@@ -77,6 +81,7 @@ export class Cartridge implements SlotDevice {
 
   constructor(readonly rom: Uint8Array, mapper?: Mapper, readonly name = '') {
     this.mapper = mapper ?? guessMapper(rom);
+    this.scc = this.mapper === 'konamiscc' ? new Scc() : null;
     if (this.mapper === 'plain') this.base = plainBase(rom);
     // Banks wrap at the ROM size (rounded up to a power of two).
     const pages = Math.max(1, Math.ceil(rom.length / 0x2000));
@@ -91,6 +96,7 @@ export class Cartridge implements SlotDevice {
       return off >= 0 && off < this.rom.length ? this.rom[off] : 0xff;
     }
     if (addr < 0x4000 || addr >= 0xc000) return 0xff;
+    if (this.sccOn(addr)) return this.scc!.read(addr);
     const window = (addr - 0x4000) >> 13;
     const off = ((this.banks[window] & this.mask) << 13) | (addr & 0x1fff);
     return off < this.rom.length ? this.rom[off] : 0xff;
@@ -104,6 +110,8 @@ export class Cartridge implements SlotDevice {
       case 'konamiscc':
         if ((addr & 0x1800) === 0x1000 && addr >= 0x4000 && addr < 0xc000) {
           this.banks[(addr - 0x4000) >> 13] = value;
+        } else if (this.sccOn(addr)) {
+          this.scc!.write(addr, value);
         }
         break;
       case 'ascii8':
@@ -119,5 +127,11 @@ export class Cartridge implements SlotDevice {
   /** Back to the power-on banks. */
   reset(): void {
     this.banks = [0, 1, 2, 3];
+    this.scc?.reset();
+  }
+
+  /** Whether `addr` hits the SCC's registers: 9800h-9FFFh with bank 3Fh at 8000h. */
+  private sccOn(addr: number): boolean {
+    return this.scc !== null && (this.banks[2] & 0x3f) === 0x3f && addr >= 0x9800 && addr < 0xa000;
   }
 }

@@ -287,7 +287,7 @@ async function start(): Promise<void> {
     while (owed >= frameMs / settings.speed && ran < most) {
       owed -= frameMs / settings.speed;
       msx.runFrame();
-      const samples = msx.psg.take();
+      const samples = msx.takeAudio();
       if (settings.speed === 1) sound.play(samples);
       ran++;
     }

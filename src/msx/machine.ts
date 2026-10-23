@@ -48,8 +48,10 @@ export class Msx {
   region: Region = 'ntsc';
   /** Frames run since power-on. */
   frames = 0;
+  private readonly sampleRate: number;
 
   constructor(bios: Bios, sampleRate = 44100) {
+    this.sampleRate = sampleRate;
     this.psg = new Psg(CPU_CLOCK, sampleRate);
     const rom = new Rom().place(0x0000, bios.main);
     if (bios.logo) rom.place(0x8000, bios.logo);
@@ -71,6 +73,10 @@ export class Msx {
   /** Plugs a cartridge into port 1 or 2 (null takes it out). Reset to use it. */
   insert(port: 1 | 2, cart: Cartridge | null): void {
     this.cartridges[port - 1] = cart;
+    if (cart?.scc) {
+      cart.scc.sampleRate = this.sampleRate;
+      cart.scc.now = () => this.cpu.cycles;
+    }
     this.slots.insert(port, cart ?? EMPTY);
   }
 
@@ -107,10 +113,19 @@ export class Msx {
       else if (line === 192) vdp.vblank();
     }
     this.psg.advanceTo(end);
+    for (const c of this.cartridges) c?.scc?.advanceTo(end);
     // Keep the counters small: the next frame starts at cycle 0 (plus overrun).
     cpu.cycles -= end;
     this.psg.rebase(end);
+    for (const c of this.cartridges) c?.scc?.rebase(end);
     this.frames++;
+  }
+
+  /** The frame's sound: the PSG with any cartridge's SCC mixed in. */
+  takeAudio(): Float32Array<ArrayBuffer> {
+    const out = this.psg.take();
+    for (const c of this.cartridges) c?.scc?.mixInto(out);
+    return out;
   }
 
   private portIn(port: number): number {

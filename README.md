@@ -42,10 +42,10 @@ npm run build      # static site in dist/
 | AY-3-8910 | Three tones, noise, envelope, joystick port; rendered in step with CPU time |
 | PPI | Slot select, keyboard matrix, CAPS lamp, key click |
 | Cartridges | Plain ROMs up to 64K; Konami, Konami SCC, ASCII 8K and 16K MegaROMs |
+| SCC | Konami's five-channel wave-table chip in SCC cartridges, mixed with the PSG |
 
 ## Next
 
-- The SCC sound chip of Konami's SCC cartridges.
 - Disk drives and MSX-DOS (which runs CP/M programs, like A-Prompt's).
 - Cassette images (`.cas`), expanded slots, MSX2 (V9938).
 - Save states, touch controls, a WebGL CRT shader.

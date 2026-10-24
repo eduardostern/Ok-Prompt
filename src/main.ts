@@ -253,6 +253,7 @@ async function start(): Promise<void> {
       void shelve(tape).then(showShelf);
     },
     hasBasic: () => Boolean(ownBios()),
+    columns: () => msx.vdp.textColumns() || 40,
     speaker: () => {
       const m = modem();
       return { on: (m?.speaker ?? 1) !== 0, volume: m?.volume ?? 2 };

@@ -124,6 +124,9 @@ export class Cartridge implements SlotDevice {
     }
   }
 
+  /** Text columns on the screen now, as the machine tells (the modem tells the BBS). */
+  screenColumns: () => number = () => 40;
+
   /** An I/O port read the cartridge answers, or -1 (most cartridges have none). */
   ioIn(_port: number): number {
     return -1;

@@ -5,6 +5,7 @@ import { KeyInput, KeyTable } from '../src/msx/keyboard';
 import { Msx } from '../src/msx/machine';
 import type { Dialer, LinkHandlers } from '../src/msx/modem';
 import { ModemCartridge } from '../src/msx/modem-cart';
+import type { V9938 } from '../src/msx/v9938';
 
 const file = (p: string) => new Uint8Array(readFileSync(new URL(`../${p}`, import.meta.url)));
 const BIOS = { main: file('src/roms/cbios_main_msx1.rom'), logo: file('src/roms/cbios_logo_msx1.rom') };
@@ -129,5 +130,26 @@ describe('the Ok-Modem cartridge', () => {
     bbs.say('\x1b[255;255H\x1b[6n');
     frames(m, 10);
     expect(bbs.heard()).toBe('\x1b[24;40R');
+  });
+
+  it('shows 80 columns on an MSX2 and tells the BBS so', async () => {
+    const msx2 = { main: file('src/roms/cbios_main_msx2.rom'), logo: file('src/roms/cbios_logo_msx2.rom'), sub: file('src/roms/cbios_sub.rom') };
+    const bbs = new FakeBbs();
+    const m = new Msx(msx2);
+    const cart = new ModemCartridge(ROM, { dialer: bbs.dialer, phoneBook: () => [{ host: 'bbs.example.com', port: 23 }] });
+    m.insert(1, cart);
+    m.powerCycle();
+    frames(m, 400);
+    const v = m.vdp as V9938;
+    expect(v.mode).toBe('T2');
+    expect(cart.modem.windowSize()).toEqual([80, 24]);
+    m.type('ATDT 1\r');
+    frames(m, 30);
+    await settle();
+    frames(m, 30);
+    bbs.heard();
+    bbs.say('\x1b[255;255H\x1b[6n');
+    frames(m, 10);
+    expect(bbs.heard()).toBe('\x1b[24;80R');
   });
 });

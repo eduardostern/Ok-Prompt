@@ -26,10 +26,15 @@ export interface AiBoardDeps {
   schedule(fn: () => void, ms: number): void;
   /** Characters per second for text; 0 sends at once. */
   cps?: number;
+  /** The caller's screen width (40, or 80 on an MSX2). */
+  columns?(): number;
 }
 
-/** The MSX text screen is 40 wide; a character in column 40 would wrap by itself. */
-const WIDTH = 39;
+/**
+ * The line width: one less than the screen's (a character in the last
+ * column would wrap by itself). Set per call from the caller's screen.
+ */
+let WIDTH = 39;
 const ESC = 0x1b, BS = 8, DEL = 127, CR = 13, LF = 10;
 
 export const CHAT_PROMPT = `You are the sysop AI of the Ok-Prompt AI Board, a bulletin board system
@@ -286,6 +291,7 @@ class AiBoard implements Link {
   private closeAfterOutput = false;
 
   constructor(private handlers: LinkHandlers, private deps: AiBoardDeps) {
+    WIDTH = (deps.columns?.() ?? 40) - 1;
     deps.schedule(() => {
       if (this.closed) return;
       handlers.onOpen('AI');

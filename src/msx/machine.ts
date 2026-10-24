@@ -172,6 +172,7 @@ export class Msx {
   /** Plugs a cartridge into port 1 or 2 (null takes it out). Reset to use it. */
   insert(port: 1 | 2, cart: Cartridge | null): void {
     this.cartridges[port - 1] = cart;
+    if (cart) cart.screenColumns = () => this.vdp.textColumns() || 40;
     if (cart?.scc) {
       cart.scc.sampleRate = this.sampleRate;
       cart.scc.now = () => this.cpu.cycles;

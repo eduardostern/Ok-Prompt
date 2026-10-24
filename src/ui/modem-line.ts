@@ -70,6 +70,8 @@ export interface LineDeps {
   /** Records a program from the AI board onto a tape in the deck. */
   record(name: string, program: string): void;
   hasBasic(): boolean;
+  /** The screen width now (40, or 80 on an MSX2). */
+  columns(): number;
   /** The modem's speaker settings (ATM, ATL), read when a call starts. */
   speaker(): { on: boolean; volume: number };
 }
@@ -84,6 +86,7 @@ export function makeDialer(deps: LineDeps): Dialer {
         chat: streamChat,
         record: deps.record,
         hasBasic: deps.hasBasic,
+        columns: deps.columns,
         schedule: (fn, ms) => { window.setTimeout(fn, ms); },
       });
     }

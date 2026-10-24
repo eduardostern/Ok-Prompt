@@ -10,7 +10,8 @@
 ; (no BASIC) it starts at power-on. It shows the line at 40 columns,
 ; turning the BBS's ANSI codes into the MSX screen's own and the PC's
 ; CP437 characters into MSX ones (the table at the end, cptab, is made by
-; scripts/build-okmodem.ts from the shapes in the MSX font). CTRL+STOP
+; scripts/build-okmodem.ts from the shapes in the MSX font), at 80
+; columns on an MSX2 and 40 on an MSX1. CTRL+STOP
 ; goes back to BASIC and leaves the call up.
 ;
 ; Ok-Prompt, MIT licence. Assemble with scripts/build-okmodem.ts.
@@ -22,7 +23,8 @@ BREAKX  equ 00B7h       ; carry: CTRL+STOP held
 INITXT  equ 006Ch       ; SCREEN 0
 ERAFNK  equ 00CCh       ; KEY OFF
 POSIT   equ 00C6h       ; cursor to column H, row L (from 1)
-LINL40  equ 0F3AEh      ; SCREEN 0 width
+LINL40  equ 0F3AEh      ; SCREEN 0 width: 40, or 80 on an MSX2
+MSXVER  equ 002Dh       ; in the BIOS: 0 MSX1, 1 MSX2, 2 MSX2+
 CSRY    equ 0F3DCh      ; cursor row (from 1)
 CSRX    equ 0F3DDh      ; cursor column (from 1)
 PROCNM  equ 0FD89h      ; the name after CALL
@@ -120,8 +122,12 @@ term:   push ix
         ld (ix+VSTATE), a
         ld (ix+VSAVY), 1
         ld (ix+VSAVX), 1
+        ld a, (MSXVER)  ; an MSX2 or later shows 80 columns (TEXT2)
+        or a
         ld a, 40
-        ld (LINL40), a
+        jr z, setwidth
+        ld a, 80
+setwidth: ld (LINL40), a
         call b_initxt
         call b_erafnk
         ld hl, banner
@@ -361,11 +367,13 @@ csipos: ld a, (ix+VPAR)         ; row
         jr c, cprow
         ld a, 24
 cprow:  ld l, a
-        ld a, (ix+VPAR+1)       ; column
+        ld a, (ix+VPAR+1)       ; column, at most the width
         call atleast1
-        cp 40
+        ld b, a
+        ld a, (LINL40)
+        cp b
         jr c, cpcol
-        ld a, 40
+        ld a, b
 cpcol:  ld h, a
         jp b_posit
 
@@ -408,9 +416,13 @@ csiright: ld a, (ix+VPAR)
         ld a, (CSRX)
         add a, b
         jr c, crmax
-        cp 41
-        jr c, cmcol
-crmax:  ld a, 40
+        ld b, a
+        ld a, (LINL40)
+        cp b
+        jr c, cmcol     ; past the width: the last column
+        ld a, b
+        jr cmcol
+crmax:  ld a, (LINL40)
 cmcol:  ld h, a
         ld a, (CSRY)
         ld l, a

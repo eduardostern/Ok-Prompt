@@ -15,8 +15,8 @@ export class ModemCartridge extends Cartridge {
 
   constructor(rom: Uint8Array, options: ModemOptions = {}) {
     super(rom, 'plain', MODEM_CART_NAME);
-    // The terminal shows 40 columns; BBSes that ask are told so.
-    this.modem = new Modem({ windowSize: () => [40, 24], terminalType: () => 'ANSI', ...options });
+    // The terminal shows 40 columns, or 80 on an MSX2; BBSes that ask are told so.
+    this.modem = new Modem({ windowSize: () => [this.screenColumns(), 24], terminalType: () => 'ANSI', ...options });
   }
 
   override ioIn(port: number): number {

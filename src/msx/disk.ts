@@ -169,24 +169,53 @@ export function dpb(g: Geometry): number[] {
 }
 
 /**
+ * An idle WD2793 floppy controller: the disk ROM's start-up looks for one
+ * (writes the track register and reads it back, waits for "not busy"),
+ * then all disk work goes through the jump table, which the machine does.
+ * Registers 0-3: status/command, track, sector, data; 4: the board's own
+ * (Microsol: drive and side select; reads INTRQ in bit 7).
+ */
+export class IdleFdc {
+  private regs = [0, 0, 1, 0];
+
+  read(r: number): number {
+    if (r === 0) return 0x04; // not busy, head on track 0
+    if (r === 4) return 0x80; // INTRQ: the last command is done
+    return this.regs[r];
+  }
+
+  write(r: number, v: number): void {
+    if (r === 0) {
+      // Commands end at once. Seek moves the head to the data register's track; restore to 0.
+      if ((v & 0xf0) === 0x10) this.regs[1] = this.regs[3];
+      else if ((v & 0xf0) === 0x00) this.regs[1] = 0;
+    } else if (r < 4) {
+      this.regs[r] = v & 0xff;
+    }
+  }
+}
+
+/**
  * The disk ROM in its slot (3-1): the ROM at 4000h-7FFFh, with the Philips
  * controller registers at 7FF8h-7FFFh answering like an idle drive.
  */
 export class DiskRomSlot implements SlotDevice {
+  readonly fdc = new IdleFdc();
+
   constructor(readonly rom: Uint8Array) {}
 
   read(addr: number): number {
     if (addr < 0x4000 || addr >= 0x8000) return 0xff;
-    switch (addr) {
-      case 0x7ff8: return 0x04; // status: not busy, head on track 0
-      case 0x7ff9: case 0x7ffa: case 0x7ffb: return 0x00;
-      case 0x7ffc: case 0x7ffd: return 0x00;
-      case 0x7fff: return 0xbf; // INTRQ (bit 6, active low) on, DRQ off
-      default: return this.rom[addr - 0x4000];
+    if (addr >= 0x7ff8) {
+      if (addr <= 0x7ffb) return this.fdc.read(addr - 0x7ff8);
+      if (addr === 0x7fff) return 0xbf; // INTRQ (bit 6, active low) on, DRQ off
+      return 0x00;
     }
+    return this.rom[addr - 0x4000];
   }
 
-  write(): void {
-    // The controller's registers: nothing to do, the machine does the work.
+  write(addr: number, value: number): void {
+    // The controller's registers; the machine does the disk work.
+    if (addr >= 0x7ff8 && addr <= 0x7ffb) this.fdc.write(addr - 0x7ff8, value);
   }
 }

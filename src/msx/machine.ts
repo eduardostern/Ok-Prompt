@@ -598,7 +598,7 @@ export class Msx {
       case 0x90: return this.printer.status();
     }
     // A Brazilian (Microsol) disk ROM's controller: idle, not busy.
-    if (this.diskSlot && port >= 0xd0 && port <= 0xd4) return port === 0xd0 ? 0x04 : port === 0xd4 ? 0x80 : 0x00;
+    if (this.diskSlot && port >= 0xd0 && port <= 0xd4) return this.diskSlot.fdc.read(port - 0xd0);
     if (this.model !== 'msx1') {
       if (port >= 0xfc) return this.mapper.getPage(port - 0xfc);
       if (port === 0xb5) return this.rtc.read();
@@ -629,6 +629,7 @@ export class Msx {
         for (const c of this.cartridges) if (c?.ioOut(port, value)) break;
         break;
       default:
+        if (this.diskSlot && port >= 0xd0 && port <= 0xd4) { this.diskSlot.fdc.write(port - 0xd0, value); break; }
         for (const c of this.cartridges) if (c?.ioOut(port, value)) break;
     }
   }

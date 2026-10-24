@@ -707,7 +707,10 @@ async function start(): Promise<void> {
         rom = diskRomIn(r.data);
         if (rom) { name = r.name; break; }
       }
-      if (!rom) throw new Error('no disk ROM in it ("AB" and the jump table at 4010h, 16K)');
+      if (!rom) {
+        throw new Error('no disk ROM in it ("AB" and the jump table at 4010h, 16K). EPROM dumps from boards that '
+          + 'scramble their lines (DDX, TPX...) do not read as one: use a plain dump, such as the CDX-2 or Microsol one');
+      }
       const stored = { name, data: rom };
       await saveDiskRom(stored);
       diskRoms = [...diskRoms.filter((r) => r.name !== name), stored].sort((a, b) => a.name.localeCompare(b.name));

@@ -171,9 +171,14 @@ describe.skipIf(!path || !diskPath)('a real BIOS with a real disk ROM (MSX_DISKR
     m.insertDisk(disk);
     m.powerCycle();
     frames(m, 600);
+    // MSX1s have no clock: the disk ROM asks for the date as it starts.
+    if (/date|data/i.test(screen(m))) {
+      m.type('10-10-86\r'); // day and month alike: some ask D-M-Y, some M-D-Y
+      frames(m, 120);
+    }
     m.type('10 PRINT "OI DO DISCO"\rSAVE "OIDISCO"\rFILES\r');
     frames(m, 300);
-    expect(screen(m)).toMatch(/OIDISCO/);
+    expect(screen(m)).toMatch(/^ *OIDISCO/m);
     expect(disk.dirty || disk.data.some((b, i) => i >= 7 * 512 && i < 14 * 512 && b !== 0)).toBe(true);
   });
 });

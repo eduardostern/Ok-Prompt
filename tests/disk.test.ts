@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { assemble } from '../scripts/z80asm';
-import { blankDisk, Disk, diskRomIn, dpb, isDiskRom, SECTOR, standardGeometry } from '../src/msx/disk';
+import { blankDisk, Disk, DiskRomSlot, diskRomIn, dpb, isDiskRom, SECTOR, standardGeometry } from '../src/msx/disk';
 import { Bios, Msx } from '../src/msx/machine';
 
 const rom = (n: string) => new Uint8Array(readFileSync(new URL(`../src/roms/${n}`, import.meta.url)));
@@ -151,3 +151,32 @@ describe('disk ROM files', () => {
     expect(diskRomIn(new Uint8Array(0x4000))).toBeNull();
   });
 });
+
+describe('the idle floppy controller', () => {
+  // Disk ROMs look for their controller as they start: FastDROM writes the
+  // track register and reads it back, and installs nothing if it differs.
+  it('reads back its track, sector and data registers (Microsol ports D1h-D3h)', () => {
+    const m = new Msx(MSX1);
+    m.setDiskRom(diskRom(''));
+    const out = (p: number, v: number) => m.cpu.portOut(p, v);
+    const inp = (p: number) => m.cpu.portIn(p);
+    out(0xd1, 0x5a);
+    out(0xd2, 0x07);
+    out(0xd3, 0x21);
+    expect([inp(0xd1), inp(0xd2), inp(0xd3)]).toEqual([0x5a, 0x07, 0x21]);
+    expect(inp(0xd0) & 1).toBe(0); // not busy
+    out(0xd0, 0x10); // seek to the data register's track
+    expect(inp(0xd1)).toBe(0x21);
+    out(0xd0, 0x00); // restore
+    expect(inp(0xd1)).toBe(0);
+  });
+
+  it('does the same at 7FF8h-7FFBh (Philips)', () => {
+    const slot = new DiskRomSlot(diskRom(''));
+    slot.write(0x7ff9, 0x33);
+    slot.write(0x7ffa, 0x05);
+    expect([slot.read(0x7ff9), slot.read(0x7ffa), slot.read(0x7ff8) & 1]).toEqual([0x33, 0x05, 0]);
+    expect(slot.read(0x4000)).toBe(0x41); // the ROM around it
+  });
+});
+

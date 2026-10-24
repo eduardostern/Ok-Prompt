@@ -12,6 +12,9 @@ copyrighted ships with it: plug in a game ROM and it starts.
 The name comes from MSX BASIC, which answers every command with `Ok`, as
 [A-Prompt](https://a-prompt.stern.workers.dev), its CP/M sibling, is named
 after `A>`. The Z80 core comes from A-Prompt, where zexdoc and zexall pass.
+[K-Prompt](https://k-prompt.stern.workers.dev), the third sibling, runs it as a
+ZX Spectrum, with Brazil's TK90X and TK95, and is named after the Spectrum's
+K cursor.
 
 A [history page](https://ok-prompt.stern.workers.dev/history.html) tells
 where MSX came from, how an MSX1 works, Brazil's Gradiente Expert and Sharp

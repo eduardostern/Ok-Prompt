@@ -49,6 +49,8 @@ body {
 }
 .brand .ok { color: var(--accent); text-shadow: 0 0 18px rgba(125, 118, 252, 0.6); }
 .tag { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.tag a { color: var(--accent); text-decoration: none; }
+.tag a:hover { text-decoration: underline; }
 
 /* ---- the stage: panels around the monitor ------------------------------ */
 

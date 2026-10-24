@@ -13,6 +13,11 @@ The name comes from MSX BASIC, which answers every command with `Ok`, as
 [A-Prompt](https://a-prompt.stern.workers.dev), its CP/M sibling, is named
 after `A>`. The Z80 core comes from A-Prompt, where zexdoc and zexall pass.
 
+A [history page](https://ok-prompt.stern.workers.dev/history.html) tells
+where MSX came from, how an MSX1 works, Brazil's Gradiente Expert and Sharp
+Hotbit (with what changed between Expert 1.0 and 1.1, measured on the
+original ROMs), and how MSX-DOS met CP/M.
+
 ## Run
 
 ```bash

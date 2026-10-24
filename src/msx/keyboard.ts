@@ -29,6 +29,9 @@ row(5, ['KeyS', 'KeyT', 'KeyU', 'KeyV', 'KeyW', 'KeyX', 'KeyY', 'KeyZ']);
 row(6, ['ShiftLeft', 'ControlLeft', 'AltLeft', 'CapsLock', 'AltRight', 'F1', 'F2', 'F3']);
 row(7, ['F4', 'F5', 'Escape', 'Tab', 'F7', 'Backspace', 'F8', 'Enter']);
 row(8, ['Space', 'Home', 'Insert', 'Delete', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'ArrowRight']);
+// The numeric keypad (MSXs that have one: rows 9 and 10).
+row(9, ['NumpadMultiply', 'NumpadAdd', 'NumpadDivide', 'Numpad0', 'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4']);
+row(10, ['Numpad5', 'Numpad6', 'Numpad7', 'Numpad8', 'Numpad9', 'NumpadSubtract', 'NumpadComma', 'NumpadDecimal']);
 MAP.ShiftRight = [6, 0];
 MAP.ControlRight = [6, 1];
 MAP.NumpadEnter = [7, 7];
@@ -96,6 +99,23 @@ export function msxCodes(ch: string, charset: Charset = 'international'): number
   if (charset === 'brazil-1.0' && ch in BRAZIL_10) return BRAZIL_10[ch];
   const c = msxCode(ch);
   return c < 0 ? [] : [c];
+}
+
+/**
+ * Text to type into the MSX (pasted text): MSX codes in a character set,
+ * Enter for each line end, tabs kept, other characters it lacks dropped.
+ */
+export function msxText(text: string, charset: Charset = 'international'): string {
+  let out = '';
+  for (const ch of text.replace(/\r\n?/g, '\n')) {
+    if (ch === '\n') out += '\r';
+    else if (ch === '\t') out += '\t';
+    else {
+      const c = msxCodes(ch, charset)[0];
+      if (c !== undefined) out += String.fromCharCode(c);
+    }
+  }
+  return out;
 }
 
 /** A matrix key and the modifiers held with it. */

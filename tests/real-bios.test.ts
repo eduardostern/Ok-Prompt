@@ -6,7 +6,8 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { KeyInput, KeyTable } from '../src/msx/keyboard';
+import { KeyInput, KeyTable, msxText } from '../src/msx/keyboard';
+import { printedText } from '../src/msx/printer';
 import { biosLabel, checkBios, Msx } from '../src/msx/machine';
 import { asciiCas, Tape } from '../src/msx/tape';
 import { ModemCartridge } from '../src/msx/modem-cart';
@@ -123,4 +124,22 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
     frames(m, 120);
     expect(screen(m)).toMatch(/^ *OI DO TAPE$/m);
   });
+
+  it('takes a pasted program: every line typed, then RUN', () => {
+    const m = boot();
+    const lines = Array.from({ length: 30 }, (_, i) => `${(i + 1) * 10} A=A+${i + 1}`);
+    m.type(msxText([...lines, `${310} PRINT "SOMA";A`, 'RUN', ''].join('\n')));
+    for (let i = 0; i < 3000 && m.typing; i++) frames(m, 1);
+    frames(m, 60);
+    expect(m.typing).toBe(false);
+    expect(screen(m)).toMatch(/^ *SOMA 465 *$/m);
+  });
+
+  it('prints to the printer with LPRINT', () => {
+    const m = boot();
+    m.type('LPRINT "OI DA IMPRESSORA"\r');
+    frames(m, 60);
+    expect(printedText(m.printer.bytes, (c) => String.fromCharCode(c))).toContain('OI DA IMPRESSORA\n');
+  });
 });
+

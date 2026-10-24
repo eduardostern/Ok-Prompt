@@ -23,6 +23,7 @@
 import { Z80 } from '../z80';
 import { Cartridge } from './cartridge';
 import { Ppi } from './ppi';
+import { Printer } from './printer';
 import { Psg } from './psg';
 import { MapperRam } from './mapper';
 import { Rtc } from './rtc';
@@ -96,6 +97,8 @@ export class Msx {
   /** The TMS9918A (MSX1) or the V9938/V9958 (MSX2, MSX2+): set by the BIOS. */
   vdp: VideoChip = new Vdp();
   readonly psg: Psg;
+  /** The printer port (90h, 91h). */
+  readonly printer = new Printer();
   /** The MSX1's 64K in slot 3. */
   readonly ram = new Ram();
   /** The MSX2's memory mapper (512K in slot 3-2) and clock. */
@@ -328,6 +331,7 @@ export class Msx {
       case 0x99: return this.vdp.readStatus();
       case 0xa2: return this.psg.read();
       case 0xa8: case 0xa9: case 0xaa: case 0xab: return this.ppi.in(port);
+      case 0x90: return this.printer.status();
     }
     if (this.model !== 'msx1') {
       if (port >= 0xfc) return this.mapper.getPage(port - 0xfc);
@@ -347,6 +351,7 @@ export class Msx {
       case 0xa0: this.psg.select(value); break;
       case 0xa1: this.psg.write(value, this.cpu.cycles); break;
       case 0xa8: case 0xa9: case 0xaa: case 0xab: this.ppi.out(port, value); break;
+      case 0x90: case 0x91: this.printer.write(port, value); break;
       case 0x9a: this.vdp.writePalette(value); break;
       case 0x9b: this.vdp.writeIndirect(value); break;
       case 0xb4: if (this.model !== 'msx1') this.rtc.select(value); break;

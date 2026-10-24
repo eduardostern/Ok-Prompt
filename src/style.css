@@ -514,3 +514,17 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* The printer's paper */
+.printer-out {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px 10px;
+  background: #f4f1e6;
+  color: #222;
+  border-radius: 4px;
+  font: 12px/1.35 var(--mono);
+  white-space: pre-wrap;
+  word-break: break-all;
+}

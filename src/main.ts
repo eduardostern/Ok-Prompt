@@ -13,7 +13,8 @@ import logo2pRomUrl from './roms/cbios_logo_msx2+.rom?url';
 import subRomUrl from './roms/cbios_sub.rom?url';
 import modemRomUrl from './roms/okmodem.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
-import { KeyInput, KeyTable, SPECIAL_KEYS } from './msx/keyboard';
+import { detectCharset, KeyInput, KeyTable, msxChar, msxText, SPECIAL_KEYS } from './msx/keyboard';
+import { printedText } from './msx/printer';
 import { Bios, biosLabel, biosModel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
 import { asciiCas, loadCommand, Tape, tsxToCas } from './msx/tape';
 import { MODEM_CART_NAME, ModemCartridge } from './msx/modem-cart';
@@ -78,6 +79,15 @@ const save = () => {
 
 async function bytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(await (await fetch(url)).arrayBuffer());
+}
+
+/** Saves bytes as a file on the user's computer. */
+function download(name: string, data: Uint8Array): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data.slice()], { type: 'application/octet-stream' }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 async function start(): Promise<void> {
@@ -473,12 +483,7 @@ async function start(): Promise<void> {
   });
   $('tape-save').addEventListener('click', () => {
     const t = msx.tape;
-    if (!t) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([t.data.slice()], { type: 'application/octet-stream' }));
-    a.download = t.name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    if (t) download(t.name, t.data);
   });
   $('tape-play').addEventListener('click', async () => {
     const t = msx.tape;
@@ -624,6 +629,42 @@ async function start(): Promise<void> {
     if (keys.up(e.code)) e.preventDefault();
   });
   window.addEventListener('blur', () => keys.releaseAll());
+  /** Types text into the MSX, in the character set of the BIOS in use. */
+  const paste = (text: string) => {
+    if (!running || !text) return;
+    msx.type(msxText(text, keys.table?.charset ?? detectCharset(currentBios().main)));
+  };
+  window.addEventListener('paste', (e) => {
+    if (typing(e)) return;
+    e.preventDefault();
+    paste(e.clipboardData?.getData('text/plain') ?? '');
+  });
+  $('paste').addEventListener('click', async () => {
+    try {
+      paste(await navigator.clipboard.readText());
+    } catch {
+      alert('The browser would not share the clipboard. Press ⌘V or Ctrl+Shift+V on the page instead.');
+    }
+  });
+
+  // ---- the printer ---------------------------------------------------------
+
+  const printerOut = $('printer-out');
+  const printed = () => printedText(msx.printer.bytes, (c) => msxChar(c, keys.table?.charset ?? 'international'));
+  let printShown = 0;
+  const showPrinter = () => {
+    const any = msx.printer.bytes.length > 0;
+    printerOut.hidden = !any;
+    $('printer-keys').hidden = !any;
+    $('printer-note').hidden = any;
+    printerOut.textContent = printed();
+    printerOut.scrollTop = printerOut.scrollHeight;
+    printShown = msx.printer.bytes.length;
+  };
+  // Shown once a frame at most: LLIST prints thousands of bytes.
+  msx.printer.onPrint = () => { printShown = -1; };
+  $('printer-clear').addEventListener('click', () => { msx.printer.clear(); showPrinter(); });
+  $('printer-save').addEventListener('click', () => download('printout.txt', new TextEncoder().encode(printed())));
   const kbdToggle = $('kbd-toggle');
   const showKbd = () => {
     $('kbd').hidden = !settings.keyboard;
@@ -710,6 +751,7 @@ async function start(): Promise<void> {
     }
     if (ran === most) owed = 0; // the host fell behind: do not try to catch up
     if (ran) draw();
+    if (printShown !== msx.printer.bytes.length) showPrinter();
     statFrames += ran;
     if (now - statTime >= 1000) {
       const f = (statFrames * 1000) / (now - statTime);

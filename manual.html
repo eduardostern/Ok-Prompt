@@ -213,7 +213,7 @@
             <h3>Which disk ROMs work</h3>
             <ul>
               <li>Any plain MSX disk ROM: tested with the Philips VG-8235, Sony HB-3600, Microsol CDX-2 and FastDROM (its CDX-2 version), on the Expert 1.0 and 1.1, the Hotbit, international MSX1s and the MSX2+ kit.</li>
-              <li>Some EPROM dumps from Brazilian boards (DDX, TPX, DMX) are wired in a scrambled order and do not read as a disk ROM. Use the CDX-2 or FastDROM CDX-2 file for those drives: it does the same job here.</li>
+              <li>Some EPROM dumps from Brazilian boards (DDX, TPX, DMX) do not start the way a disk ROM does as files, and are refused. Use the CDX-2 or FastDROM CDX-2 file for those drives: it does the same job here.</li>
               <li>FastDROM leaves the most memory free.</li>
             </ul>
             <h3>Keeping your disks</h3>
@@ -318,7 +318,7 @@
               <tr><th>Tapes</th><td><code>.cas</code>, <code>.tsx</code></td></tr>
               <tr><th>Disks</th><td><code>.dsk</code> (360K or 720K)</td></tr>
               <tr><th>System ROMs</th><td>An MSX1 BIOS (32K); an MSX2 or MSX2+ main ROM with its SUB-ROM</td></tr>
-              <tr><th>Disk ROMs</th><td>Plain 16K dumps (not the scrambled DDX, TPX or DMX EPROMs)</td></tr>
+              <tr><th>Disk ROMs</th><td>Plain 16K dumps (not the DDX, TPX or DMX board EPROMs)</td></tr>
               <tr><th>Any of them</th><td>Inside a <code>.zip</code></td></tr>
             </tbody>
           </table>
@@ -331,7 +331,7 @@
           <li><b>A game shows a black screen or restarts:</b> try another bank scheme in the menu under its slot.</li>
           <li><b>No sound:</b> click the page once; check the volume, and that Speed is Normal.</li>
           <li><b>A tape game does not load with ▶ Load:</b> it needs a BIOS with BASIC; C-BIOS cannot load tapes by itself.</li>
-          <li><b>The disk ROM is refused:</b> it is probably a scrambled board dump; use a plain one (see <a href="#disks">The disk drive</a>).</li>
+          <li><b>The disk ROM is refused:</b> it is probably a board EPROM dump that does not read as a disk ROM; use a plain one (see <a href="#disks">The disk drive</a>).</li>
           <li><b>BASIC answers <i>Invalid date</i> at start-up:</b> the disk ROM is asking for the date; type it in the order it shows, or press Enter.</li>
           <li><b>The MSX2+ comes up in 32 columns:</b> <code>SCREEN 0:WIDTH 80:SET SCREEN</code>.</li>
           <li><b>Keys type the wrong symbols:</b> switch the Keyboard setting between <i>Types what your keys say</i> and <i>MSX key positions</i>.</li>

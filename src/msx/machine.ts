@@ -171,7 +171,7 @@ export class Msx {
     const model = biosModel(bios.main);
     if (model !== this.model) {
       this.model = model;
-      this.vdp = model === 'msx1' ? new Vdp() : new V9938(model === 'msx2+', () => this.cpu.cycles);
+      this.vdp = model === 'msx1' ? new Vdp() : new V9938(model === 'msx2+', () => this.cpu.cycles, true);
     }
     this.bios = bios;
     this.layoutSlot3();
@@ -315,6 +315,7 @@ export class Msx {
     this.psg.rebase(end);
     for (const c of this.cartridges) c?.scc?.rebase(end);
     this.fm?.rebase(end);
+    if (vdp instanceof V9938) vdp.cmd.rebase(end);
     this.frames++;
     if (this.toType && (this.keysAsked || this.frames >= TYPE_FALLBACK_FRAMES)) this.fillKeyBuffer();
   }

@@ -1,10 +1,22 @@
 /**
  * The V9938's command engine (docs/v9938.md §7): rectangle fills and copies,
  * lines, searches and single pixels in the bitmap modes, with logical
- * operations, driven by registers R#32-R#46. Commands run at once (CE
- * clears in the R#46 write), except the transfers with the CPU (HMMC, LMMC
- * through R#44, LMCM through S#7), which move one byte or pixel per access.
+ * operations, driven by registers R#32-R#46. Commands do their work at
+ * once, but with a clock (in the machine) CE stays set for about as long
+ * as the real chip takes, so programs that wait on it wait as long; the
+ * transfers with the CPU (HMMC, LMMC through R#44, LMCM through S#7) move
+ * one byte or pixel per access, at the CPU's pace.
  */
+
+/**
+ * CPU cycles per byte or pixel, screen on, sprites on: the chip shares VRAM
+ * with the picture and sprites. Approximations of openMSX's per-command
+ * timings (VDP clock = 6 CPU cycles), and a cost per row.
+ */
+const COST = { hmmv: 8, ymmm: 9, hmmm: 11, lmmv: 12, lmmm: 17, line: 15, srch: 15, pset: 15, point: 15 } as const;
+const ROW_COST = 10;
+/** With the screen blanked the chip has VRAM to itself. */
+const BLANK_FACTOR = 0.65;
 
 /** How the screen mode lays out pixels for commands. */
 export interface CmdMode {
@@ -23,6 +35,8 @@ export interface CmdHost {
   regs: Uint8Array;
   /** The layout for commands now, or null where commands do nothing. */
   cmdMode(): CmdMode | null;
+  /** CPU cycles now (frame-relative), to time commands; without it they take no time. */
+  clock?: () => number;
 }
 
 const phys = (l: number) => ((l << 16) | (l >> 1)) & 0x1ffff;
@@ -34,8 +48,11 @@ type Transfer = {
 };
 
 export class CommandEngine {
-  /** S#2 CE, TR, BD; S#7; S#8/S#9. */
-  ce = false;
+  /** S#2 CE (set while a transfer waits for the CPU), TR, BD; S#7; S#8/S#9. */
+  private running = false;
+  /** A command done at once still counts as running until this cycle. */
+  private busyUntil = 0;
+  private busy = false;
   tr = false;
   bd = false;
   cl = 0;
@@ -46,8 +63,35 @@ export class CommandEngine {
 
   constructor(private readonly host: CmdHost) {}
 
+  /** S#2 CE: a command is running. */
+  get ce(): boolean {
+    if (this.busy && this.host.clock!() >= this.busyUntil) this.busy = false;
+    return this.running || this.busy;
+  }
+
+  set ce(v: boolean) {
+    this.running = v;
+    if (!v) return;
+    this.busy = false;
+  }
+
+  /** The machine's frame ended: its cycle count starts again from 0. */
+  rebase(by: number): void {
+    if (this.busy) this.busyUntil -= by;
+  }
+
+  /** The command just done takes `units` bytes or pixels and `rows` rows of the chip's time. */
+  private charge(cost: number, units: number, rows = 0): void {
+    const clock = this.host.clock;
+    if (!clock) return;
+    const blank = (this.r[1] & 0x40) === 0;
+    this.busy = true;
+    this.busyUntil = clock() + (units * cost + rows * ROW_COST) * (blank ? BLANK_FACTOR : 1);
+  }
+
   reset(): void {
     this.ce = this.tr = this.bd = this.transfer = false;
+    this.busy = false;
     this.cl = this.borderX = 0;
     this.xfer = null;
   }
@@ -124,6 +168,7 @@ export class CommandEngine {
 
   private start(cmd: number): void {
     this.xfer = null;
+    this.busy = false; // a new command (or STOP) ends the last one
     // (a pre-written R#44 stays as the first datum of a transfer)
     const code = cmd >> 4;
     const op = cmd & 0x0f;
@@ -134,8 +179,8 @@ export class CommandEngine {
     const tx = arg & 4 ? -1 : 1;
     const ty = arg & 8 ? -1 : 1;
     switch (code) {
-      case 0x4: this.cl = this.point(m, this.sx, this.sy); this.ce = false; return;
-      case 0x5: this.pset(m, this.dx, this.dy, this.r[44], op); this.ce = false; return;
+      case 0x4: this.cl = this.point(m, this.sx, this.sy); this.ce = false; this.charge(COST.point, 1); return;
+      case 0x5: this.pset(m, this.dx, this.dy, this.r[44], op); this.ce = false; this.charge(COST.pset, 1); return;
       case 0x6: this.srch(m, tx, !!(arg & 2)); return;
       case 0x7: this.line(m, op, tx, ty, !!(arg & 1)); return;
       case 0x8: this.rect(m, 'lmmv', op, tx, ty); return;
@@ -191,6 +236,7 @@ export class CommandEngine {
       }
     }
     this.finishRows(ny, ty, m, copy);
+    this.charge(COST[kind], nx * ny, ny);
   }
 
   /** YMMM: bytes from (DX, SY) to (DX, DY), from DX to the edge. */
@@ -206,6 +252,7 @@ export class CommandEngine {
       for (let i = 0; i < nx; i++) vram[this.addr(m, bx + i * tx, dy)] = vram[this.addr(m, bx + i * tx, sy)];
     }
     this.finishRows(ny, ty, m, true);
+    this.charge(COST.ymmm, nx * ny, ny);
   }
 
   private line(m: CmdMode, op: number, tx: number, ty: number, maj: boolean): void {
@@ -229,6 +276,7 @@ export class CommandEngine {
     }
     this.set10(38, y);
     this.ce = false;
+    this.charge(COST.line, anx);
   }
 
   private srch(m: CmdMode, tx: number, eq: boolean): void {
@@ -244,6 +292,7 @@ export class CommandEngine {
       this.borderX = x;
     }
     this.ce = false;
+    this.charge(COST.srch, Math.abs(this.borderX - this.sx) + 1);
   }
 
   // ---- transfers with the CPU ------------------------------------------------

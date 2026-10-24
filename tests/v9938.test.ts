@@ -305,6 +305,40 @@ describe('V9938 sprites', () => {
 describe('V9938 commands', () => {
   const g4 = () => { const v = new V9938(); mode(v, 'G4'); return v; };
 
+  it('takes its time with a clock: CE stays set until the chip would be done', () => {
+    let now = 1000;
+    const v = new V9938(false, () => now, true);
+    mode(v, 'G4');
+    command(v, { nx: 256, ny: 212, clr: 0x44 }, 0xc0); // HMMV, a whole SCREEN 5 page
+    expect(v.vram[211 * 128 + 127]).toBe(0x44); // the work is done at once...
+    expect(status(v, 2) & 1).toBe(1); // ...but CE says busy
+    // 128 x 212 bytes at about 8 cycles, plus rows: some 220,000 cycles, 3.7 frames.
+    now += 200_000;
+    expect(status(v, 2) & 1).toBe(1);
+    now += 30_000;
+    expect(status(v, 2) & 1).toBe(0);
+    // Blanked screen: faster. And STOP ends it at once.
+    reg(v, 1, MODE_BITS.G4[1]);
+    command(v, { nx: 256, ny: 212, clr: 0x55 }, 0xc0);
+    now += 150_000;
+    expect(status(v, 2) & 1).toBe(0);
+    command(v, { nx: 256, ny: 212, clr: 0x66 }, 0xc0);
+    expect(status(v, 2) & 1).toBe(1);
+    command(v, {}, 0x00);
+    expect(status(v, 2) & 1).toBe(0);
+  });
+
+  it('keeps its busy time across frames (the machine rebases its clock)', () => {
+    let now = 0;
+    const v = new V9938(false, () => now, true);
+    mode(v, 'G4');
+    command(v, { nx: 256, ny: 212, clr: 0x44 }, 0xc0);
+    now = 59_736; // end of a frame
+    v.cmd.rebase(59_736);
+    now = 0;
+    expect(status(v, 2) & 1).toBe(1);
+  });
+
   it('HMMV fills bytes and leaves DY and NY as the chip does', () => {
     const v = g4();
     command(v, { nx: 256, ny: 212, clr: 0x44 }, 0xc0);

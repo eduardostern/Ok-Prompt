@@ -82,10 +82,13 @@ export class V9938 implements VideoChip {
 
   /**
    * `now` gives the CPU cycle count since the frame started (for the HR
-   * and VR flags of S#2).
+   * and VR flags of S#2). With `timed`, commands also take their time on
+   * that clock (CE stays set); without, they finish at once.
    */
-  constructor(readonly v9958 = false, private readonly now: () => number = () => 0) {
-    this.cmd = new CommandEngine({ vram: this.vram, regs: this.regs, cmdMode: () => this.cmdMode() });
+  constructor(readonly v9958 = false, private readonly now: () => number = () => 0, timed = false) {
+    this.cmd = new CommandEngine({
+      vram: this.vram, regs: this.regs, cmdMode: () => this.cmdMode(), ...(timed ? { clock: now } : {}),
+    });
     this.reset();
   }
 

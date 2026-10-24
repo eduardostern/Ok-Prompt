@@ -4,7 +4,7 @@
  *
  *   1, 2            the cartridge in each slot
  *   "shelf:<name>"  every cartridge ever loaded, to pick again later
- *   "bios"          the player's own system ROM (C-BIOS needs no entry)
+ *   "bios:<name>"   the player's own system ROMs (C-BIOS needs no entry)
  *   "tape"          the cassette in the tape deck, with what was recorded
  */
 
@@ -46,8 +46,19 @@ const put = (key: IDBValidKey, value: StoredCart | null) =>
 export const saveCart = (slot: number, cart: StoredCart | null) => put(slot, cart);
 export const loadCart = (slot: number) => run<StoredCart>('readonly', (s) => s.get(slot));
 
-export const saveBios = (bios: StoredCart | null) => put('bios', bios);
-export const loadBios = () => run<StoredCart>('readonly', (s) => s.get('bios'));
+const BIOS = 'bios:';
+export const saveBios = (bios: StoredCart) => put(BIOS + bios.name, bios);
+export const removeBios = (name: string) => put(BIOS + name, null);
+/** Every BIOS kept, the single one of earlier versions (key "bios") moved in. */
+export const loadAllBios = async (): Promise<StoredCart[]> => {
+  const old = await run<StoredCart>('readonly', (s) => s.get('bios'));
+  if (old) {
+    await saveBios(old);
+    await put('bios', null);
+  }
+  const all = await run<StoredCart[]>('readonly', (s) => s.getAll(IDBKeyRange.bound(BIOS, BIOS + '\uffff')));
+  return (all ?? []).sort((a, b) => a.name.localeCompare(b.name));
+};
 
 export const saveTape = (tape: StoredCart | null) => put('tape', tape);
 export const loadTape = () => run<StoredCart>('readonly', (s) => s.get('tape'));

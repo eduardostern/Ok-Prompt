@@ -60,6 +60,20 @@ const KEYBUF = 0xfbf0, KEYBUF_END = 0xfc18;
 /** Frames after a reset to give up waiting for CHGET and type anyway. */
 const TYPE_FALLBACK_FRAMES = 600;
 
+/**
+ * A name for a BIOS from its start-up text: "Gradiente Expert 1.1",
+ * "Sharp Hotbit 1.1", "MSX BASIC 1.0"; null if it has none.
+ */
+export function biosLabel(rom: Uint8Array): string | null {
+  let text = '';
+  for (const b of rom) text += b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : '\u00b7';
+  const version = /vers(?:.o|ion)\s*(\d\.\d)/.exec(text)?.[1] ?? '';
+  const maker = text.includes('HOT-BASIC') ? 'Sharp Hotbit'
+    : text.includes('G r a d i e n t e') ? 'Gradiente Expert'
+      : text.includes('MSX BASIC') ? 'MSX BASIC' : '';
+  return maker ? `${maker} ${version}`.trim() : null;
+}
+
 export class Msx {
   readonly cpu = new Z80();
   readonly slots = new Slots();

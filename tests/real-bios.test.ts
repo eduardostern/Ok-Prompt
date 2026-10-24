@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { KeyInput, KeyTable } from '../src/msx/keyboard';
-import { checkBios, Msx } from '../src/msx/machine';
+import { biosLabel, checkBios, Msx } from '../src/msx/machine';
 import { Tape } from '../src/msx/tape';
 
 const path = process.env.MSX_BIOS?.replace(/^~/, process.env.HOME ?? '~');
@@ -33,14 +33,15 @@ function boot(): Msx {
 describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
   it('passes the BIOS check and boots to MSX BASIC', () => {
     expect(() => checkBios(main)).not.toThrow();
-    expect(screen(boot())).toMatch(/^ ?Ok$/m); // the Expert 1.0 starts lines one column in
+    expect(biosLabel(main)).toMatch(/^(Gradiente Expert|Sharp Hotbit|MSX BASIC) \d\.\d$/);
+    expect(screen(boot())).toMatch(/^ *Ok$/m); // some BIOSes start lines a column or two in
   });
 
   it('types into BASIC through the key buffer', () => {
     const m = boot();
     m.type('PRINT 6*7\r');
     frames(m, 60);
-    expect(screen(m)).toMatch(/^ ? 42$/m);
+    expect(screen(m)).toMatch(/^ * 42$/m);
   });
 
   it('types the characters of a PC keyboard through the BIOS key table', () => {
@@ -86,6 +87,6 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
     m.tape.rewind();
     m.type('CLOAD\rRUN\r');
     frames(m, 120);
-    expect(screen(m)).toMatch(/^ ?OI DO TAPE$/m);
+    expect(screen(m)).toMatch(/^ *OI DO TAPE$/m);
   });
 });

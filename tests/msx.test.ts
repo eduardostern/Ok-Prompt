@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Cartridge, guessMapper, plainBase } from '../src/msx/cartridge';
-import { checkBios, Msx } from '../src/msx/machine';
+import { biosLabel, checkBios, Msx } from '../src/msx/machine';
 import { detectCharset, KeyInput, KeyTable, msxCode, msxCodes, msxKey } from '../src/msx/keyboard';
 import { Ppi } from '../src/msx/ppi';
 import { Scc } from '../src/msx/scc';
@@ -447,6 +447,11 @@ describe('the machine', () => {
     expect(() => checkBios(BIOS.main)).not.toThrow();
     expect(() => checkBios(new Uint8Array(0x8000))).toThrow(/DI/);
     expect(() => checkBios(new Uint8Array(0x1000).fill(0xf3))).toThrow(/32K/);
+    const banner = (text: string) => { const r = new Uint8Array(0x8000); r.set([...text].map((c) => c.charCodeAt(0) & 0xff), 0x100); return r; };
+    expect(biosLabel(banner('MSX BASIC vers\u0084o 1.0 Br\0G r a d i e n t e'))).toBe('Gradiente Expert 1.0');
+    expect(biosLabel(banner('HOT-BASIC vers\u00b1o  1.1\0EPCOM'))).toBe('Sharp Hotbit 1.1');
+    expect(biosLabel(banner('MSX BASIC version 1.0\0Copyright 1983 by Microsoft'))).toBe('MSX BASIC 1.0');
+    expect(biosLabel(own)).toBeNull();
 
     const m = new Msx(BIOS);
     m.setBios({ main: own });

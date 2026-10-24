@@ -8,14 +8,14 @@ import mainRomUrl from './roms/cbios_main_msx1.rom?url';
 import logoRomUrl from './roms/cbios_logo_msx1.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { KeyInput, KeyTable, SPECIAL_KEYS } from './msx/keyboard';
-import { checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
+import { biosLabel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
 import { loadCommand, Tape } from './msx/tape';
 import { HEIGHT, WIDTH } from './msx/vdp';
 import { audioContext } from './ui/audio';
 import { askConfirm } from './ui/confirm';
 import { waitForPower, warmUp } from './ui/power';
 import { SoundOut } from './ui/sound-out';
-import { loadBios, loadCart, loadShelf, loadTape, saveBios, saveCart, saveTape, shelve, StoredCart, unshelve } from './ui/store';
+import { loadAllBios, loadCart, loadShelf, loadTape, removeBios, saveBios, saveCart, saveTape, shelve, StoredCart, unshelve } from './ui/store';
 
 const SAMPLE_RATE = 44100;
 const MAX_ROM = 4 * 1024 * 1024;
@@ -35,8 +35,8 @@ interface Settings {
   humbar: boolean;
   volume: number;
   autoPower: boolean;
-  /** The system ROM: the built-in C-BIOS or the player's own. */
-  bios: 'cbios' | 'own';
+  /** The system ROM: 'cbios' (built in) or the name of one of the player's own. */
+  bios: string;
   /** Keys type the character on the PC key (through the BIOS's table), or stay where they are. */
   keymap: 'char' | 'position';
 }
@@ -73,13 +73,16 @@ async function start(): Promise<void> {
   const [main, logo] = await Promise.all([bytes(mainRomUrl), bytes(logoRomUrl)]);
   const cbios = { main, logo };
   const msx = new Msx(cbios, SAMPLE_RATE);
-  let ownBios = await loadBios();
-  if (settings.bios === 'own' && ownBios) msx.setBios({ main: ownBios.data });
+  let biosList = await loadAllBios();
+  if (settings.bios === 'own') settings.bios = biosList[0]?.name ?? 'cbios'; // the one BIOS of earlier versions
+  /** The player's BIOS in use, or undefined for C-BIOS. */
+  const ownBios = () => biosList.find((b) => b.name === settings.bios);
+  if (ownBios()) msx.setBios({ main: ownBios()!.data });
   const keys = new KeyInput(msx.ppi);
   keys.inject = (code) => msx.type(String.fromCharCode(code));
   /** Reads the key table of the BIOS in use (when typing by character). */
   const useKeyTable = () => {
-    const rom = settings.bios === 'own' && ownBios ? ownBios.data : main;
+    const rom = ownBios()?.data ?? main;
     keys.table = settings.keymap === 'char' ? KeyTable.find(rom) : null;
     const note = document.getElementById('keymap-note');
     if (note) {
@@ -345,7 +348,7 @@ async function start(): Promise<void> {
   function insertTape(stored: StoredCart | null, persist = true): void {
     msx.tape = stored ? new Tape(stored.data, stored.name) : null;
     if (persist) void saveTape(stored);
-    tapeNote.textContent = stored && settings.bios !== 'own'
+    tapeNote.textContent = stored && !ownBios()
       ? 'Tapes load from MSX BASIC: pick your own BIOS under System ROM (C-BIOS has no BASIC).'
       : '';
     showTape();
@@ -383,7 +386,7 @@ async function start(): Promise<void> {
     const first = t?.first();
     if (!t) return;
     if (!first) { tapeNote.textContent = 'No MSX file found at the start of this tape.'; return; }
-    if (settings.bios !== 'own') {
+    if (!ownBios()) {
       tapeNote.textContent = 'Tapes load from MSX BASIC: pick your own BIOS under System ROM (C-BIOS has no BASIC).';
       return;
     }
@@ -405,22 +408,27 @@ async function start(): Promise<void> {
   const biosFile = $<HTMLInputElement>('bios-file');
   const biosNote = $('bios-note');
   const biosNoteText = biosNote.textContent;
+  const label = (b: StoredCart) => biosLabel(b.data) ?? b.name.replace(/\.[a-z0-9]+$/i, '');
   const showBios = () => {
     while (biosSel.options.length > 1) biosSel.remove(1);
-    if (ownBios) biosSel.add(new Option(ownBios.name, 'own'));
-    biosSel.value = settings.bios === 'own' && ownBios ? 'own' : 'cbios';
-    $('bios-remove').hidden = !ownBios;
+    for (const b of biosList) {
+      const o = new Option(label(b), b.name);
+      o.title = b.name;
+      biosSel.add(o);
+    }
+    biosSel.value = ownBios() ? settings.bios : 'cbios';
+    $('bios-remove').hidden = !ownBios();
   };
-  const useBios = async (which: 'cbios' | 'own') => {
-    settings.bios = which;
+  const useBios = async (name: string) => {
+    settings.bios = biosList.some((b) => b.name === name) ? name : 'cbios';
     save();
-    msx.setBios(which === 'own' && ownBios ? { main: ownBios.data } : cbios);
+    msx.setBios(ownBios() ? { main: ownBios()!.data } : cbios);
     useKeyTable();
     showBios();
-    if (which === 'own') tapeNote.textContent = '';
+    if (ownBios()) tapeNote.textContent = '';
     if (running) await powerOn();
   };
-  biosSel.addEventListener('change', () => void useBios(biosSel.value as 'cbios' | 'own'));
+  biosSel.addEventListener('change', () => void useBios(biosSel.value));
   $('bios-load').addEventListener('click', () => biosFile.click());
   biosFile.addEventListener('change', async () => {
     const file = biosFile.files?.[0];
@@ -429,23 +437,32 @@ async function start(): Promise<void> {
     try {
       const rom = await readRom(file, 0x10000, 'an MSX1 system ROM');
       checkBios(rom.data);
-      ownBios = rom;
+      // The same bytes under another name (Expert 1.1 and DD Plus share one ROM): use that one.
+      const same = biosList.find((b) => b.data.length === rom.data.length && b.data.every((v, i) => v === rom.data[i]));
+      if (same) {
+        biosNote.textContent = `${file.name} is the same ROM as ${label(same)}, already here.`;
+        await useBios(same.name);
+        return;
+      }
       await saveBios(rom);
+      biosList = [...biosList.filter((b) => b.name !== rom.name), rom].sort((a, b) => a.name.localeCompare(b.name));
       biosNote.textContent = biosNoteText;
-      await useBios('own');
+      await useBios(rom.name);
     } catch (e) {
       biosNote.textContent = `Could not use ${file.name}: ${(e as Error).message}`;
     }
   });
   $('bios-remove').addEventListener('click', async () => {
+    const b = ownBios();
+    if (!b) return;
     const yes = await askConfirm({
-      title: 'Remove your BIOS?',
-      message: `${ownBios?.name} will be forgotten by this browser and the MSX goes back to C-BIOS.`,
+      title: 'Remove this BIOS?',
+      message: `${label(b)} (${b.name}) will be forgotten by this browser and the MSX goes back to C-BIOS.`,
       ok: 'Remove',
     });
     if (!yes) return;
-    ownBios = undefined;
-    await saveBios(null);
+    await removeBios(b.name);
+    biosList = biosList.filter((x) => x !== b);
     await useBios('cbios');
   });
   showBios();

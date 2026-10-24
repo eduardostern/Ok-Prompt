@@ -138,6 +138,9 @@ export class Msx {
     cpu.write = (a, v) => this.slots.write(a, v);
     cpu.portIn = (p) => this.portIn(p & 0xff);
     cpu.portOut = (p, v) => this.portOut(p & 0xff, v);
+    this.ppi.onMotor = () => this.tape?.advance(this.cpu.cycles, this.ppi.motor);
+    // The cassette input follows the tape only while its motor runs.
+    this.psg.tapeIn = () => (this.tape && this.ppi.motor ? this.tape.level(this.cpu.cycles, true) : 0);
     this.ppi.onClick = (level) => {
       this.psg.advanceTo(cpu.cycles);
       this.psg.click = level;
@@ -244,6 +247,8 @@ export class Msx {
     }
     this.psg.advanceTo(end);
     for (const c of this.cartridges) c?.scc?.advanceTo(end);
+    this.tape?.advance(end, this.ppi.motor);
+    this.tape?.rebase(end);
     // Keep the counters small: the next frame starts at cycle 0 (plus overrun).
     cpu.cycles -= end;
     this.psg.rebase(end);
@@ -307,7 +312,12 @@ export class Msx {
         cpu.iff1 = cpu.iff2 = 1;
         if (pc === TAPOOF && tape?.changed) this.onTapeWritten?.(tape);
         break;
-      case STMOTR: break;
+      case STMOTR: {
+        // A: 0 stops the motor, 1 starts it, FFh turns it over.
+        const on = cpu.a === 0xff ? !this.ppi.motor : cpu.a !== 0;
+        this.ppi.out(0xab, on ? 0x08 : 0x09); // port C bit 4: 0 runs the motor
+        break;
+      }
       default: return false;
     }
     cpu.f = carry ? cpu.f | 0x01 : cpu.f & ~0x01;

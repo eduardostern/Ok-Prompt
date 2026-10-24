@@ -16,7 +16,7 @@ import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { detectCharset, KeyInput, KeyTable, msxChar, msxText, SPECIAL_KEYS } from './msx/keyboard';
 import { printedText } from './msx/printer';
 import { Bios, biosLabel, biosModel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
-import { asciiCas, loadCommand, Tape, tsxToCas } from './msx/tape';
+import { asciiCas, isTsx, loadCommand, Tape } from './msx/tape';
 import { MODEM_CART_NAME, ModemCartridge } from './msx/modem-cart';
 import { getDeepSeekKey, keyListeners, modemOptions, setDeepSeekKey } from './ui/modem-line';
 import { HEIGHT, WIDTH } from './msx/vdp';
@@ -307,16 +307,13 @@ async function start(): Promise<void> {
       if (!pick) throw new Error('no ROM inside the zip');
       [name, data] = pick;
     }
-    // A .tsx tape becomes the .cas the tape deck plays.
-    if (/\.tsx$/i.test(name)) {
-      data = tsxToCas(data);
-      name = name.replace(/\.tsx$/i, '.cas');
-    }
+    // A .tsx stays as it is: the tape deck plays its timing to custom loaders.
+    if (/\.tsx$/i.test(name) && !isTsx(data)) throw new Error('not a .tsx tape');
     if (data.length > max) throw new Error(`too big for ${what}`);
     return { name: name.replace(/^.*\//, ''), data };
   };
 
-  const isTape = (name: string) => /\.cas$/i.test(name);
+  const isTape = (name: string) => /\.(cas|tsx)$/i.test(name);
 
   const load = async (file: File, n: 1 | 2) => {
     try {
@@ -442,7 +439,7 @@ async function start(): Promise<void> {
   const KIND_LABEL = { binary: 'machine code', basic: 'BASIC', ascii: 'BASIC text' } as const;
   const showTapePos = () => {
     const t = msx.tape;
-    $('tape-pos').textContent = t && t.length ? `${Math.round((t.pos / t.length) * 100)}%` : '';
+    $('tape-pos').textContent = t && t.signal.end ? `${Math.round(t.progress * 100)}%` : '';
   };
   function showTape(): void {
     const t = msx.tape;
@@ -450,7 +447,8 @@ async function start(): Promise<void> {
     const first = t?.first();
     $('tape-label').textContent = !t
       ? 'No tape: click or drop a .cas or .tsx'
-      : first ? `${t.name} · ${first.name || 'no name'} (${KIND_LABEL[first.kind]})` : `${t.name} · blank`;
+      : first ? `${t.name} · ${first.name || 'no name'} (${KIND_LABEL[first.kind]})`
+        : `${t.name} · ${t.length || /\.tsx$/i.test(t.file().name) ? 'its own loader' : 'blank'}`;
     showTapePos();
     markShelf();
   }
@@ -463,7 +461,8 @@ async function start(): Promise<void> {
     showTape();
   }
   msx.onTapeWritten = (t) => {
-    const stored = { name: t.name, data: t.data.slice() };
+    const f = t.file();
+    const stored = { name: f.name, data: f.data.slice() };
     void saveTape(stored);
     void shelve(stored).then(showShelf);
     showTape();
@@ -483,7 +482,10 @@ async function start(): Promise<void> {
   });
   $('tape-save').addEventListener('click', () => {
     const t = msx.tape;
-    if (t) download(t.name, t.data);
+    if (t) {
+      const f = t.file();
+      download(f.name, f.data);
+    }
   });
   $('tape-play').addEventListener('click', async () => {
     const t = msx.tape;

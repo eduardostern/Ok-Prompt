@@ -28,6 +28,8 @@ export class Psg {
   joystick = [0x3f, 0x3f];
   /** The key-click level (PPI port C bit 7), mixed in. */
   click = 0;
+  /** The cassette input (R14 bit 7): the tape's level now. */
+  tapeIn?: () => number;
 
   private toneCount = [0, 0, 0];
   private toneOut = [0, 0, 0];
@@ -83,9 +85,9 @@ export class Psg {
     const r = this.selected;
     if (r === 14) {
       // Port A: joystick 1 or 2 (picked by port B bit 6), keyboard layout
-      // bit 6 = 1 (international), cassette input bit 7 = 0.
+      // bit 6 = 1 (international), cassette input bit 7.
       const stick = this.joystick[(this.regs[15] >> 6) & 1];
-      return 0x40 | (stick & 0x3f);
+      return (this.tapeIn?.() ? 0x80 : 0) | 0x40 | (stick & 0x3f);
     }
     return this.regs[r];
   }

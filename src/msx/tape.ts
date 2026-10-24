@@ -10,29 +10,52 @@
  * D0 x 10 binary (BLOAD"CAS:",R), D3 x 10 tokenized BASIC (CLOAD),
  * EA x 10 ASCII text (RUN"CAS:" or LOAD"CAS:").
  *
- * The machine does not play the tape as sound: it catches the BIOS's tape
- * routines (TAPION, TAPIN, TAPOON, TAPOUT ...) and answers them from here,
- * as fMSX and openMSX do. Programs with their own turbo loaders, which read
- * the cassette input bit directly, do not load this way.
+ * Two ways in. The machine catches the BIOS's tape routines (TAPION,
+ * TAPIN, TAPOON, TAPOUT ...) and answers them from the bytes, at once, as
+ * fMSX does. Programs with their own loaders read the cassette input bit
+ * instead: while the motor runs, the tape plays its signal (tape-signal.ts),
+ * a .tsx with its own timing. Both share one place on the tape, so a game
+ * can load its loader through the BIOS and the rest by itself.
  */
+
+import { casSignal, parseTsx, Signal } from './tape-signal';
 
 export const CAS_MARKER = [0x1f, 0xa6, 0xde, 0xba, 0xcc, 0x13, 0x7d, 0x74];
 
 export type TapeKind = 'binary' | 'basic' | 'ascii';
 
 export class Tape {
-  /** Where the next read or write happens. */
+  /** Where the next read or write happens, in the .cas bytes. */
   pos = 0;
   /** Whether anything was recorded since it was inserted. */
   changed = false;
   private bytes: Uint8Array;
   private size: number;
+  /** The .tsx it came from, while nothing was recorded over it. */
+  private tsx: Uint8Array | null = null;
+  private played: Signal | null = null;
+  /**
+   * Tape time (CPU cycles) for the signal, and the CPU cycle it was last
+   * brought up to. `byTime` says which cursor is current: the signal's
+   * (a loader reading the input bit) or `pos` (the BIOS tape routines).
+   */
+  private time = 0;
+  private lastCycle = 0;
+  private byTime = false;
 
+  /** A .cas, or a .tsx (kept for its timing). */
   constructor(data: Uint8Array = new Uint8Array(0), readonly name = 'tape.cas') {
+    if (isTsx(data)) {
+      const { cas, signal } = parseTsx(data);
+      this.tsx = data.slice();
+      this.played = signal;
+      data = cas;
+    }
     this.bytes = data.slice();
     this.size = data.length;
   }
 
+  /** The tape as .cas bytes. */
   get data(): Uint8Array {
     return this.bytes.subarray(0, this.size);
   }
@@ -41,12 +64,62 @@ export class Tape {
     return this.size;
   }
 
+  /** The tape as a file to download: the .tsx as it came, or a .cas once recorded on. */
+  file(): { name: string; data: Uint8Array } {
+    if (this.tsx) return { name: this.name, data: this.tsx };
+    return { name: this.name.replace(/\.tsx$/i, '.cas'), data: this.data };
+  }
+
+  /** How far through the tape it is, 0 to 1. */
+  get progress(): number {
+    if (this.byTime) return Math.min(1, this.time / Math.max(1, this.signal.end));
+    return this.size ? this.pos / this.size : 0;
+  }
+
   rewind(): void {
     this.pos = 0;
+    this.time = 0;
+    this.byTime = false;
+  }
+
+  /** The pulses of this tape (a .cas gets the BIOS's 1200-baud timing). */
+  get signal(): Signal {
+    return (this.played ??= casSignal(this.data));
+  }
+
+  /** Runs the tape up to CPU cycle `cycles`; it moves only while the motor is on. */
+  advance(cycles: number, motor: boolean): void {
+    if (motor && this.byTime) this.time += cycles - this.lastCycle;
+    this.lastCycle = cycles;
+  }
+
+  /** The machine's frame ended: its cycle count starts again from 0. */
+  rebase(by: number): void {
+    this.lastCycle -= by;
+  }
+
+  /** The level on the cassette input (PSG R14 bit 7) at CPU cycle `cycles`. */
+  level(cycles: number, motor: boolean): number {
+    if (!this.byTime) {
+      // The BIOS routines read up to `pos`: play on from there.
+      this.time = this.signal.timeOfPos(this.pos);
+      this.byTime = true;
+      this.lastCycle = cycles;
+    }
+    this.advance(cycles, motor);
+    return this.signal.level(this.time);
+  }
+
+  /** Before the BIOS routines: `pos` catches up with what the signal played. */
+  private toBytes(): void {
+    if (!this.byTime) return;
+    this.pos = this.signal.posOfTime(this.time, this.size);
+    this.byTime = false;
   }
 
   /** TAPION: moves past the next block marker; false at the end of the tape. */
   findBlock(): boolean {
+    this.toBytes();
     for (let p = (this.pos + 7) & ~7; p + 8 <= this.size; p += 8) {
       if (CAS_MARKER.every((b, i) => this.bytes[p + i] === b)) {
         this.pos = p + 8;
@@ -59,17 +132,20 @@ export class Tape {
 
   /** TAPIN: the next byte, or -1 at the end of the tape. */
   readByte(): number {
+    this.toBytes();
     return this.pos < this.size ? this.bytes[this.pos++] : -1;
   }
 
   /** TAPOON: pads to a multiple of 8 and writes a block marker. */
   startBlock(): void {
+    this.toBytes();
     while (this.pos & 7) this.writeByte(0);
     for (const b of CAS_MARKER) this.writeByte(b);
   }
 
   /** TAPOUT: records a byte here; whatever came after it is gone, as on tape. */
   writeByte(value: number): void {
+    this.toBytes();
     if (this.pos >= this.bytes.length) {
       const grown = new Uint8Array(Math.max(1024, this.bytes.length * 2));
       grown.set(this.bytes.subarray(0, this.size));
@@ -78,6 +154,9 @@ export class Tape {
     this.bytes[this.pos++] = value & 0xff;
     this.size = this.pos;
     this.changed = true;
+    // Recorded over: the tape is a .cas now, played at the BIOS's speed.
+    this.tsx = null;
+    this.played = null;
   }
 
   /** The kind and name of the first file on the tape. */
@@ -127,54 +206,17 @@ export function asciiCas(name: string, text: string): Uint8Array {
 }
 
 /**
- * A .tsx tape (TZX with MSX blocks, as made by makeTSX) as a .cas: the data
- * of each Kansas City block (ID 4Bh) after a marker. The other blocks (info,
- * pauses, ZX Spectrum speed blocks) carry nothing the BIOS reads and are
- * skipped. Throws if the file is not a TZX or holds no MSX data.
+ * The .cas inside a .tsx tape (TZX with MSX blocks, as made by makeTSX): the
+ * data of each MSX block (ID 4Bh) after a marker. Throws if the file is not
+ * a TZX or holds no MSX data.
  */
 export function tsxToCas(tsx: Uint8Array): Uint8Array<ArrayBuffer> {
-  const sig = 'ZXTape!\x1a';
-  if (tsx.length < 10 || [...sig].some((c, i) => tsx[i] !== c.charCodeAt(0))) throw new Error('not a .tsx tape');
-  const w = (p: number) => tsx[p] | (tsx[p + 1] << 8);
-  const t = (p: number) => w(p) | (tsx[p + 2] << 16);
-  const d = (p: number) => (w(p) | (w(p + 2) << 16)) >>> 0;
-  /** Length of a block's body after its ID byte, by TZX 1.20 (and 4Bh from TSX). */
-  const size = (id: number, p: number): number => {
-    switch (id) {
-      case 0x10: return 4 + w(p + 2);
-      case 0x11: return 18 + t(p + 15);
-      case 0x12: return 4;
-      case 0x13: return 1 + 2 * tsx[p];
-      case 0x14: return 10 + t(p + 7);
-      case 0x15: return 8 + t(p + 5);
-      case 0x18: case 0x19: case 0x4b: return 4 + d(p);
-      case 0x20: case 0x23: case 0x24: return 2;
-      case 0x21: case 0x30: return 1 + tsx[p];
-      case 0x22: case 0x25: case 0x27: return 0;
-      case 0x26: return 2 + 2 * w(p);
-      case 0x28: case 0x32: return 2 + w(p);
-      case 0x2a: return 4;
-      case 0x2b: return 5;
-      case 0x31: return 2 + tsx[p + 1];
-      case 0x33: return 1 + 3 * tsx[p];
-      case 0x35: return 20 + d(p + 16);
-      case 0x5a: return 9;
-      default: return 4 + d(p); // TZX: unknown blocks start with a 4-byte length
-    }
-  };
-  const out: number[] = [];
-  let p = 10;
-  while (p < tsx.length) {
-    const id = tsx[p++];
-    const n = size(id, p);
-    if (id === 0x4b) {
-      // length (4), pause (2), pilot, pulses, bit 0, bit 1 (2 each), two config bytes, then the data
-      const data = tsx.subarray(p + 16, p + 4 + d(p));
-      while (out.length & 7) out.push(0);
-      out.push(...CAS_MARKER, ...data);
-    }
-    p += n;
-  }
-  if (!out.length) throw new Error('no MSX data on this .tsx');
-  return Uint8Array.from(out);
+  const { cas } = parseTsx(tsx);
+  if (!cas.length) throw new Error('no MSX data on this .tsx');
+  return cas;
+}
+
+/** Whether these bytes are a .tsx (TZX) file. */
+export function isTsx(data: Uint8Array): boolean {
+  return [...'ZXTape!'].every((c, i) => data[i] === c.charCodeAt(0));
 }

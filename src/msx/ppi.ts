@@ -16,13 +16,21 @@ export class Ppi {
   portC = 0x70;
   /** Called when the key-click bit changes (the 1-bit sound). */
   onClick?: (level: number) => void;
+  /** Called before the cassette motor bit changes. */
+  onMotor?: () => void;
 
   constructor(private slots: Slots) {}
 
   reset(): void {
     this.slots.primary = 0;
+    if (!(this.portC & 0x10)) this.onMotor?.();
     this.portC = 0x70;
     this.rows.fill(0xff);
+  }
+
+  /** Whether the cassette motor runs (port C bit 4 low). */
+  get motor(): boolean {
+    return (this.portC & 0x10) === 0;
   }
 
   get capsLamp(): boolean {
@@ -56,6 +64,7 @@ export class Ppi {
 
   private setC(value: number): void {
     const clicked = (value ^ this.portC) & 0x80;
+    if ((value ^ this.portC) & 0x10) this.onMotor?.();
     this.portC = value & 0xff;
     if (clicked) this.onClick?.(value >> 7);
   }

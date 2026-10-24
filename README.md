@@ -1,6 +1,7 @@
 # Ok-Prompt
 
 **An MSX in your browser. Drop in a cartridge and play.**
+Live at **https://ok-prompt.stern.workers.dev**.
 
 Ok-Prompt is an MSX1 emulator in TypeScript: a Z80 at 3.58 MHz, the
 TMS9918A video chip, the AY-3-8910 sound chip, the 8255 PPI with the
@@ -19,6 +20,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm test           # vitest; ZEX=1 npx vitest run tests/zex.test.ts for the Z80 exercisers
 npm run build      # static site in dist/
+npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflare)
 ```
 
 ## Playing

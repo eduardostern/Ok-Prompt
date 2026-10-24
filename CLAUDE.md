@@ -11,6 +11,7 @@ npm run dev                      # http://localhost:5173
 npm test                         # vitest (zex tests skipped)
 npx tsc --noEmit                 # typecheck (npm run build also runs it)
 npm run build                    # static site in dist/
+npm run deploy                   # build + wrangler deploy to ok-prompt.stern.workers.dev
 ZEX=1 npx vitest run tests/zex.test.ts   # zexdoc + zexall, ~2.5 min
 ```
 

@@ -120,15 +120,10 @@ export class Synth {
   }
 
   /** The handshake from the answer tone to the data carrier; returns the end time. */
-  /**
-   * The answer and training. `short` keeps it to about 2.5 s: BBSes probe
-   * the terminal a few seconds after the connection opens, and the line's
-   * data waits for the handshake to end.
-   */
-  handshake(t: number, seed = 1, short = false): number {
+  handshake(t: number, seed = 1): number {
     this.seed = seed || 1;
     // ANSam: 2100 Hz, 15 Hz amplitude modulation, a phase reversal every 450 ms.
-    const ans = short ? 0.9 : 1.6;
+    const ans = 1.6;
     const g = this.envelope(t, ans, 0.32);
     const am = this.ctx.createGain();
     am.gain.setValueAtTime(0.8, t);
@@ -153,11 +148,6 @@ export class Synth {
     t += 0.45;
     this.fsk(t, 0.4, 1850, 1650, 0.25);
     t += 0.5;
-    if (short) {
-      this.noise(t, 0.5, 1800, 0.5);
-      this.noise(t + 0.5, 0.4, 2400, 0.45);
-      return t + 0.9;
-    }
     // Line probing: a comb of tones every 150 Hz, twice.
     const comb = Array.from({ length: 24 }, (_, i) => 150 * (i + 1));
     t = this.tones(comb, t, 0.18, 0.5) + 0.12;
@@ -187,8 +177,6 @@ export class Synth {
 
 /** The sounds of one call, driven by what the line does. */
 export interface CallSound {
-  /** Resolves when the number is dialed and the first ring has ended: time to connect. */
-  rung(): Promise<void>;
   /** The far end answered: plays the handshake, resolves when it ends. */
   answered(): Promise<void>;
   /** The call failed: busy signal. */
@@ -246,10 +234,6 @@ export function playCall(ctx: BaseAudioContext, out: AudioNode, target: string):
     clearTimeout(ringTimer);
   };
   return {
-    rung() {
-      const end = dialed + RING_ON + 0.3;
-      return new Promise((resolve) => setTimeout(resolve, Math.max(0, (end - ctx.currentTime) * 1000)));
-    },
     answered() {
       finish();
       // The relay connects long before the number is dialed: let the digits
@@ -259,7 +243,7 @@ export function playCall(ctx: BaseAudioContext, out: AudioNode, target: string):
       const current = rings.filter((r) => r <= now).pop() ?? rings[0];
       const start = Math.max(now + 0.05, current + RING_ON + 0.3);
       synth.stopFrom(start);
-      const end = new Synth(ctx, out).handshake(start, digitsFor(target).length + target.length, true);
+      const end = new Synth(ctx, out).handshake(start, digitsFor(target).length + target.length);
       return new Promise((resolve) => setTimeout(resolve, (end - ctx.currentTime) * 1000));
     },
     failed() {

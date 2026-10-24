@@ -1,10 +1,11 @@
 /**
- * Puts the modem speaker on a dialer: the dial tone, the digits and a ring
- * play first, and only then is the connection opened, so the BBS's clock
- * starts when a real modem's would; when it answers, CONNECT waits for the
- * (short) handshake, holding whatever the BBS sends meanwhile. BBSes probe
- * the terminal a few seconds after connecting and give up on a late answer.
- * A call that fails gets the busy signal.
+ * Puts the modem speaker on a dialer. The whole call plays first: dial
+ * tone, the digits, a ring, and the answer and training handshake. Only
+ * then is the connection opened, the way the BBS would only have seen the
+ * caller once both modems had trained. From there nothing is held: CONNECT
+ * comes when the line is up, and the BBS's first bytes (its terminal
+ * probes, its telnet options) are answered at once, so it detects the
+ * terminal properly. A call that cannot be made gets the busy signal.
  */
 import type { DialTarget, Dialer, Link } from '../msx/modem';
 import type { CallSound } from './modem-audio';
@@ -15,32 +16,26 @@ export function withCallSound(inner: Dialer, start: (target: DialTarget) => Call
     if (!sound) return inner(target, handlers);
     let open = false;
     let over = false;
-    const held: Uint8Array[] = [];
     let link: Link | undefined;
-    const connect = () => inner(target, {
-      onOpen: (info) => {
-        void sound.answered().then(() => {
+    void sound.answered().then(() => {
+      if (over) return;
+      link = inner(target, {
+        onOpen: (info) => {
           if (over) return;
           open = true;
           handlers.onOpen(info);
-          for (const b of held) handlers.onData(b);
-          held.length = 0;
-        });
-      },
-      onData: (bytes) => {
-        if (open) handlers.onData(bytes);
-        else if (!over) held.push(bytes);
-      },
-      onClose: () => {
-        if (over) return;
-        over = true;
-        if (open) sound.stop();
-        else sound.failed();
-        handlers.onClose();
-      },
-    });
-    void sound.rung().then(() => {
-      if (!over) link = connect();
+        },
+        onData: (bytes) => {
+          if (!over) handlers.onData(bytes);
+        },
+        onClose: () => {
+          if (over) return;
+          over = true;
+          if (open) sound.stop();
+          else sound.failed();
+          handlers.onClose();
+        },
+      });
     });
     return {
       send: (bytes) => link?.send(bytes),

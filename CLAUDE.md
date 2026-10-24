@@ -75,9 +75,10 @@ exerciser after any change to `src/z80.ts`.
   CODE+SHIFT) found by "0123456789" (0DA5h in Microsoft BIOSes). C-BIOS
   decodes only plain and SHIFT. The Expert 1.0 font (CGTABL at 0004h) has
   ç/Ç on 60h/7Eh and tilde letters on the umlaut codes (`detectCharset`).
-- BBSes probe the terminal (ESC[6n, ESC _ strings) a few seconds after
-  connecting: the call sound connects only after the ring and keeps the
-  handshake short, or the answers come too late and the board goes DUMB.
+- BBSes probe the terminal (ESC[6n, ESC _ strings) as soon as the
+  connection opens: the call sound plays the whole call, handshake
+  included, before connecting and holds nothing after, or the answers come
+  too late and the board goes DUMB. Same code as A-Prompt and K-Prompt.
 - MSX ASCII tapes: header EAh x 10 + name, then 256-byte blocks, CR LF
   lines, 1Ah padding (asciiCas matches the Expert's SAVE"CAS:" exactly).
 - C-BIOS only starts cartridges: no BASIC, no disk. MSX BASIC and MSX-DOS

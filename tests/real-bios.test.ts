@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { KeyInput, KeyTable } from '../src/msx/keyboard';
 import { biosLabel, checkBios, Msx } from '../src/msx/machine';
 import { Tape } from '../src/msx/tape';
+import { ModemCartridge } from '../src/msx/modem-cart';
 
 const path = process.env.MSX_BIOS?.replace(/^~/, process.env.HOME ?? '~');
 const main = path ? new Uint8Array(readFileSync(path)) : new Uint8Array(0);
@@ -74,6 +75,31 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
     expect(out).not.toContain(String.fromCharCode(0xffff)); // every character exists
     expect(shown).toContain('PRINT "' + out + '"');
     expect(shown.split('\n').map((l) => l.trim())).toContain(out);
+  });
+
+  it('runs the modem cartridge\'s terminal with CALL TERM, and CTRL+STOP leaves it', () => {
+    const m = new Msx({ main });
+    const cart = new ModemCartridge(new Uint8Array(readFileSync(new URL('../src/roms/okmodem.rom', import.meta.url))));
+    m.insert(2, cart);
+    m.powerCycle();
+    frames(m, 400);
+    expect(screen(m)).toMatch(/^ *Ok$/m); // BASIC starts as usual
+    m.type('CALL TERM\r');
+    frames(m, 60);
+    expect(screen(m)).toContain('Ok-Modem');
+    m.type('AT\r');
+    frames(m, 30);
+    expect(screen(m)).toMatch(/^ *OK$/m);
+    m.ppi.key(6, 1, true); // CTRL
+    m.ppi.key(7, 4, true); // STOP
+    frames(m, 10);
+    m.ppi.key(7, 4, false);
+    m.ppi.key(6, 1, false);
+    frames(m, 60);
+    expect(screen(m)).toContain('Back to BASIC');
+    m.type('PRINT 6*7\r');
+    frames(m, 60);
+    expect(screen(m)).toMatch(/^ * 42$/m);
   });
 
   it('saves to a blank tape with CSAVE and loads it back with CLOAD', () => {

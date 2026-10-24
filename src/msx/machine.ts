@@ -8,7 +8,8 @@
  *   slot 2  cartridge port 2
  *   slot 3  64K RAM
  *
- *   I/O 98h-99h VDP, A0h-A2h PSG, A8h-ABh PPI; everything else reads FFh.
+ *   I/O 98h-99h VDP, A0h-A2h PSG, A8h-ABh PPI; other ports go to the
+ *   cartridges (the modem cartridge's 04h-05h), else read FFh.
  *
  * The cassette is not played as sound: the BIOS's tape routines at
  * 00E1h-00F3h are caught while slot 0 is at page 0 and answered from the
@@ -52,7 +53,7 @@ export function checkBios(rom: Uint8Array): void {
 }
 
 // BIOS entry points and system variables (the same on every MSX).
-const CHGET = 0x009f;
+const CHSNS = 0x009c, CHGET = 0x009f;
 const TAPION = 0x00e1, TAPIN = 0x00e4, TAPIOF = 0x00e7;
 const TAPOON = 0x00ea, TAPOUT = 0x00ed, TAPOOF = 0x00f0, STMOTR = 0x00f3;
 const PUTPNT = 0xf3f8, GETPNT = 0xf3fa;
@@ -92,12 +93,15 @@ export class Msx {
   /** Text waiting to be typed when the program next waits for a key. */
   private toType = '';
   /**
-   * Where CHGET's jump at 009Fh leads in this BIOS. MSX BASIC calls that
-   * routine directly, not through 009Fh, so it is caught as well.
+   * Where the jumps at CHSNS (009Ch) and CHGET (009Fh) lead in this BIOS.
+   * MSX BASIC calls those routines directly, so they are caught as well.
    */
-  private chgetBody = -1;
-  /** Whether CHGET ran since reset: the BIOS has set up its key buffer by then. */
-  private chgetSeen = false;
+  private keyBodies: number[] = [];
+  /**
+   * Whether a program asked for keys (CHSNS or CHGET) since reset: the BIOS
+   * has set up its key buffer by then.
+   */
+  private keysAsked = false;
   private readonly sampleRate: number;
 
   constructor(bios: Bios, sampleRate = 44100) {
@@ -127,7 +131,8 @@ export class Msx {
     if (bios.logo) rom.place(0x8000, bios.logo);
     this.slots.insert(0, rom);
     const m = bios.main;
-    this.chgetBody = m[CHGET] === 0xc3 ? m[CHGET + 1] | (m[CHGET + 2] << 8) : -1;
+    const body = (at: number) => (m[at] === 0xc3 ? m[at + 1] | (m[at + 2] << 8) : -1);
+    this.keyBodies = [body(CHSNS), body(CHGET)].filter((a) => a >= 0);
   }
 
   /** Plugs a cartridge into port 1 or 2 (null takes it out). Reset to use it. */
@@ -142,7 +147,7 @@ export class Msx {
 
   /**
    * Types `text` (\r for Enter) into the BIOS key buffer once the BIOS has
-   * started up (it has called CHGET, as MSX BASIC does at its Ok prompt);
+   * started up (a program asked for keys, as MSX BASIC does at its Ok prompt);
    * text put there earlier would be lost when the BIOS clears the buffer.
    */
   type(text: string): void {
@@ -163,7 +168,7 @@ export class Msx {
     for (const c of this.cartridges) c?.reset();
     this.tape?.rewind();
     this.toType = '';
-    this.chgetSeen = false;
+    this.keysAsked = false;
     this.frames = 0;
   }
 
@@ -185,7 +190,7 @@ export class Msx {
         // The VDP holds the line until the status register is read.
         if (vdp.irq && cpu.interrupt()) continue;
         const pc = cpu.pc;
-        if (((pc <= STMOTR && pc >= CHGET) || pc === this.chgetBody) && this.trap(pc)) continue;
+        if (((pc <= STMOTR && pc >= CHSNS) || this.keyBodies.includes(pc)) && this.trap(pc)) continue;
         cpu.step();
       }
       if (line < 192) vdp.renderLine(line);
@@ -198,7 +203,7 @@ export class Msx {
     this.psg.rebase(end);
     for (const c of this.cartridges) c?.scc?.rebase(end);
     this.frames++;
-    if (this.toType && (this.chgetSeen || this.frames >= TYPE_FALLBACK_FRAMES)) this.fillKeyBuffer();
+    if (this.toType && (this.keysAsked || this.frames >= TYPE_FALLBACK_FRAMES)) this.fillKeyBuffer();
   }
 
   /** Moves as much pending text as fits into the BIOS keyboard buffer. */
@@ -227,8 +232,8 @@ export class Msx {
   private trap(pc: number): boolean {
     if (this.slots.slotOf(0) !== 0) return false; // the BIOS is not at page 0
     const cpu = this.cpu;
-    if (pc === CHGET || pc === this.chgetBody) {
-      this.chgetSeen = true;
+    if (pc === CHSNS || pc === CHGET || this.keyBodies.includes(pc)) {
+      this.keysAsked = true;
       if (this.toType) this.fillKeyBuffer();
       return false; // CHGET itself runs, and finds the keys
     }
@@ -279,8 +284,12 @@ export class Msx {
       case 0x99: return this.vdp.readStatus();
       case 0xa2: return this.psg.read();
       case 0xa8: case 0xa9: case 0xaa: case 0xab: return this.ppi.in(port);
-      default: return 0xff;
     }
+    for (const c of this.cartridges) {
+      const v = c?.ioIn(port) ?? -1;
+      if (v >= 0) return v;
+    }
+    return 0xff;
   }
 
   private portOut(port: number, value: number): void {
@@ -290,6 +299,8 @@ export class Msx {
       case 0xa0: this.psg.select(value); break;
       case 0xa1: this.psg.write(value, this.cpu.cycles); break;
       case 0xa8: case 0xa9: case 0xaa: case 0xab: this.ppi.out(port, value); break;
+      default:
+        for (const c of this.cartridges) if (c?.ioOut(port, value)) break;
     }
   }
 }

@@ -124,6 +124,16 @@ export class Cartridge implements SlotDevice {
     }
   }
 
+  /** An I/O port read the cartridge answers, or -1 (most cartridges have none). */
+  ioIn(_port: number): number {
+    return -1;
+  }
+
+  /** An I/O port write; true if the cartridge took it. */
+  ioOut(_port: number, _value: number): boolean {
+    return false;
+  }
+
   /** Back to the power-on banks. */
   reset(): void {
     this.banks = [0, 1, 2, 3];

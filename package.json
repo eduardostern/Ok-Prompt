@@ -8,12 +8,14 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && tsc -p worker && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "okmodem": "vite-node scripts/make-okmodem.ts"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261022.1",
     "@types/node": "^26.6.5",
     "typescript": "^5.6.3",
     "vite": "^6.0.0",

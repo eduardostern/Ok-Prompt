@@ -51,11 +51,14 @@ interface Settings {
   keymap: 'char' | 'position';
   /** The on-screen keyboard is open. */
   keyboard: boolean;
+  /** MSX-MUSIC (the YM2413 FM chip) is in the machine. */
+  fm: boolean;
 }
 
 const DEFAULTS: Settings = {
   region: 'ntsc', speed: 1, smooth: false, scanlines: true, curve: true,
   flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios', keymap: 'char', keyboard: false,
+  fm: true,
 };
 
 function loadSettings(): Settings {
@@ -112,6 +115,7 @@ async function start(): Promise<void> {
     return own ? { main: own.data, sub: own.sub } : BUILT_IN[settings.bios] ?? cbios;
   };
   msx.setBios(currentBios());
+  msx.setFm(settings.fm);
   // The MSX2 clock's memory (the BIOS's settings), kept as on a battery.
   const RTC_KEY = 'ok-prompt.rtc';
   try {
@@ -201,6 +205,15 @@ async function start(): Promise<void> {
   const volume = $<HTMLInputElement>('volume');
   volume.value = String(settings.volume);
   volume.addEventListener('input', () => { settings.volume = Number(volume.value); save(); applyLook(); });
+  const fmBox = $<HTMLInputElement>('fm');
+  fmBox.checked = settings.fm;
+  fmBox.addEventListener('change', () => {
+    settings.fm = fmBox.checked;
+    save();
+    msx.setFm(settings.fm);
+    // Software looks for the chip as it starts.
+    if (running) msx.powerCycle();
+  });
   const region = $<HTMLSelectElement>('region');
   region.value = settings.region;
   region.addEventListener('change', () => { settings.region = region.value as Region; save(); applyLook(); });

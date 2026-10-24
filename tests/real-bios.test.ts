@@ -141,5 +141,20 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
     frames(m, 60);
     expect(printedText(m.printer.bytes, (c) => String.fromCharCode(c))).toContain('OI DA IMPRESSORA\n');
   });
+
+  it('keeps all its RAM with MSX-MUSIC on (slot 3 expanded, RAM in 3-0)', () => {
+    const free = (fm: boolean) => {
+      const m = new Msx({ main });
+      m.setFm(fm);
+      m.powerCycle();
+      frames(m, 400);
+      m.type('PRINT FRE(0)\r');
+      frames(m, 60);
+      return screen(m).match(/^ *(\d+) *$/m)?.[1];
+    };
+    const plain = free(false);
+    expect(plain).toBeTruthy();
+    expect(free(true)).toBe(plain);
+  });
 });
 

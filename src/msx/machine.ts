@@ -31,6 +31,8 @@ import { ExpandedSlot, Ram, Rom, Slots, EMPTY } from './slots';
 import { V9938 } from './v9938';
 import type { VideoChip } from './video';
 import { Tape } from './tape';
+import { musicRom } from './music-rom';
+import { Ym2413 } from './ym2413';
 import { Vdp } from './vdp';
 
 export const CPU_CLOCK = 3_579_545;
@@ -106,6 +108,9 @@ export class Msx {
   readonly rtc = new Rtc();
   model: Model = 'msx1';
   private expanded = new ExpandedSlot();
+  private bios!: Bios;
+  /** MSX-MUSIC (the YM2413 and its ROM in slot 3-3), when switched on. */
+  fm: Ym2413 | null = null;
   readonly cartridges: (Cartridge | null)[] = [null, null];
   region: Region = 'ntsc';
   /** Frames run since power-on. */
@@ -161,18 +166,46 @@ export class Msx {
       this.model = model;
       this.vdp = model === 'msx1' ? new Vdp() : new V9938(model === 'msx2+', () => this.cpu.cycles);
     }
-    if (model === 'msx1') {
-      this.slots.insert(3, this.ram);
-    } else {
-      // C-BIOS's MSX2 layout: slot 3 expanded, SUB-ROM in 3-0, the mapper in 3-2.
-      this.expanded = new ExpandedSlot()
-        .insert(0, bios.sub ? new Rom().place(0x0000, bios.sub) : EMPTY)
-        .insert(2, this.mapper);
-      this.slots.insert(3, this.expanded);
-    }
+    this.bios = bios;
+    this.layoutSlot3();
     const m = bios.main;
     const body = (at: number) => (m[at] === 0xc3 ? m[at + 1] | (m[at + 2] << 8) : -1);
     this.keyBodies = [body(CHSNS), body(CHGET)].filter((a) => a >= 0);
+  }
+
+  /**
+   * Slot 3. An MSX1 has its 64K there; MSX2s have C-BIOS's layout, slot 3
+   * expanded with the SUB-ROM in 3-0 and the mapper in 3-2. MSX-MUSIC goes
+   * in 3-3, and expands an MSX1's slot 3 too (the RAM in 3-0), as MSX1s
+   * with something built in did.
+   */
+  private layoutSlot3(): void {
+    const fm = this.fm ? new Rom().place(0x4000, musicRom()) : EMPTY;
+    if (this.model === 'msx1') {
+      if (!this.fm) {
+        this.slots.insert(3, this.ram);
+        return;
+      }
+      this.expanded = new ExpandedSlot().insert(0, this.ram).insert(3, fm);
+    } else {
+      this.expanded = new ExpandedSlot()
+        .insert(0, this.bios.sub ? new Rom().place(0x0000, this.bios.sub) : EMPTY)
+        .insert(2, this.mapper)
+        .insert(3, fm);
+    }
+    this.slots.insert(3, this.expanded);
+  }
+
+  /** Switches MSX-MUSIC on or off. Power-cycle for software to find it. */
+  setFm(on: boolean): void {
+    if (on === Boolean(this.fm)) return;
+    if (on) {
+      this.fm = new Ym2413(this.sampleRate, CPU_CLOCK);
+      this.fm.now = () => this.cpu.cycles;
+    } else {
+      this.fm = null;
+    }
+    this.layoutSlot3();
   }
 
   /** Plugs a cartridge into port 1 or 2 (null takes it out). Reset to use it. */
@@ -206,6 +239,7 @@ export class Msx {
     this.ppi.reset();
     this.vdp.reset();
     this.psg.reset();
+    this.fm?.reset();
     this.mapper.reset();
     this.expanded.reg = 0;
     for (const c of this.cartridges) c?.reset();
@@ -247,12 +281,14 @@ export class Msx {
     }
     this.psg.advanceTo(end);
     for (const c of this.cartridges) c?.scc?.advanceTo(end);
+    this.fm?.advanceTo(end);
     this.tape?.advance(end, this.ppi.motor);
     this.tape?.rebase(end);
     // Keep the counters small: the next frame starts at cycle 0 (plus overrun).
     cpu.cycles -= end;
     this.psg.rebase(end);
     for (const c of this.cartridges) c?.scc?.rebase(end);
+    this.fm?.rebase(end);
     this.frames++;
     if (this.toType && (this.keysAsked || this.frames >= TYPE_FALLBACK_FRAMES)) this.fillKeyBuffer();
   }
@@ -328,10 +364,11 @@ export class Msx {
     return true;
   }
 
-  /** The frame's sound: the PSG with any cartridge's SCC mixed in. */
+  /** The frame's sound: the PSG with any cartridge's SCC and MSX-MUSIC mixed in. */
   takeAudio(): Float32Array<ArrayBuffer> {
     const out = this.psg.take();
     for (const c of this.cartridges) c?.scc?.mixInto(out);
+    this.fm?.mixInto(out);
     return out;
   }
 
@@ -362,6 +399,8 @@ export class Msx {
       case 0xa1: this.psg.write(value, this.cpu.cycles); break;
       case 0xa8: case 0xa9: case 0xaa: case 0xab: this.ppi.out(port, value); break;
       case 0x90: case 0x91: this.printer.write(port, value); break;
+      case 0x7c: if (this.fm) this.fm.selectRegister(value); break;
+      case 0x7d: if (this.fm) this.fm.writeData(value); break;
       case 0x9a: this.vdp.writePalette(value); break;
       case 0x9b: this.vdp.writeIndirect(value); break;
       case 0xb4: if (this.model !== 'msx1') this.rtc.select(value); break;

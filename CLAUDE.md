@@ -17,7 +17,8 @@ npx tsc -p worker                # typecheck the relay Worker (npm run build run
 ZEX=1 npx vitest run tests/zex.test.ts   # zexdoc + zexall, ~2.5 min
 MSX_BIOS=~/Downloads/expert_1.1_basic-bios1.rom npx vitest run tests/real-bios.test.ts
                                  # MSX BASIC from a real BIOS dump (never in the repo);
-                                 # add MSX_DISKROM=<disk ROM dump> for the Disk BASIC test
+                                 # add MSX_SUB=<SUB-ROM> for an MSX2/2+ BIOS,
+                                 # MSX_DISKROM=<disk ROM dump> for the Disk BASIC test
 ```
 
 Run `npx tsc --noEmit` and `npm test` before every commit. Rerun the zex
@@ -107,6 +108,11 @@ exerciser after any change to `src/z80.ts`.
 - MSX-MUSIC detection is the string "APRLOPLL" at 4018h of some slot.
 - The mouse answers PSG R15 pin 8 changes (bit 4 port 1): X hi, X lo,
   Y hi, Y lo; a pause over ~1 ms starts a new read; right/down negative.
+- MSX2+ port F4h: the BIOS sets bit 7 once started and skips the logo
+  when set; 0 at power-on, kept through reset (FFh hid the kits' logo).
+- SUB-ROMs may be 32K (Brazilian MSX2+ kits): the second half in 3-0 at
+  4000h is the logo or MSX-MUSIC; with "APRLOPLL" there the FM chip is
+  built in (`hasMusic`) and our own MSX-MUSIC ROM stays out.
 - C-BIOS only starts cartridges: no BASIC, no disk. MSX BASIC and MSX-DOS
   ROMs are copyrighted; never add them to the repo.
 

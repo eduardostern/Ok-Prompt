@@ -110,3 +110,40 @@ loop:   jr loop`));
     expect(v.vram[0]).toBe(0x9a);
   });
 });
+
+describe('port F4h on an MSX2+', () => {
+  // The BIOS sets bit 7 once started and skips its logo when it finds it set:
+  // with nothing on the port (FFh) the MSX2+ kits never showed their logo.
+  it('starts at 0 at power-on and keeps its value through a reset', () => {
+    const m = new Msx(MSX2P);
+    m.powerCycle();
+    expect(m.cpu.portIn(0xf4)).toBe(0);
+    m.cpu.portOut(0xf4, 0x80);
+    m.reset();
+    expect(m.cpu.portIn(0xf4)).toBe(0x80);
+    m.powerCycle();
+    expect(m.cpu.portIn(0xf4)).toBe(0);
+  });
+
+  it('is not there on an MSX2', () => {
+    const m = new Msx(MSX2);
+    m.powerCycle();
+    m.cpu.portOut(0xf4, 0x80);
+    expect(m.cpu.portIn(0xf4)).toBe(0xff);
+  });
+});
+
+describe('a 32K SUB-ROM with MSX-MUSIC in it', () => {
+  it('brings the FM chip with it, without our own MSX-MUSIC ROM', () => {
+    const sub = new Uint8Array(0x8000).fill(0xff);
+    sub.set(MSX2P.sub);
+    sub.set([0x41, 0x42], 0x4000);
+    sub.set([...'APRLOPLL'].map((c) => c.charCodeAt(0)), 0x4018);
+    const m = new Msx({ ...MSX2P, sub });
+    m.setFm(false);
+    expect(m.fm).not.toBeNull();
+    m.setBios(MSX2P); // another BIOS: the setting (off) holds again
+    expect(m.fm).toBeNull();
+  });
+});
+

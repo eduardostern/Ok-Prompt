@@ -46,6 +46,7 @@ export interface MachineState {
   cycleBase: number;
   toType: string;
   keysAsked: boolean;
+  bootFlags?: number;
   cpu: ChipState;
   primary: number;
   subslots: number;
@@ -110,6 +111,11 @@ const TYPE_FALLBACK_FRAMES = 600;
  * A name for a BIOS from its start-up text: "Gradiente Expert 1.1",
  * "Sharp Hotbit 1.1", "MSX BASIC 1.0"; null if it has none.
  */
+/** Whether a SUB-ROM carries MSX-MUSIC in its second 16K ("APRLOPLL" at 4018h). */
+export function hasMusic(sub: Uint8Array | undefined): boolean {
+  return !!sub && sub.length >= 0x8000 && [...'APRLOPLL'].every((c, i) => sub[0x4018 + i] === c.charCodeAt(0));
+}
+
 export function biosLabel(rom: Uint8Array): string | null {
   let text = '';
   for (const b of rom) text += b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : '\u00b7';
@@ -139,10 +145,19 @@ export class Msx {
   private bios!: Bios;
   /** MSX-MUSIC (the YM2413 and its ROM in slot 3-3), when switched on. */
   fm: Ym2413 | null = null;
+  /** The BIOS brings MSX-MUSIC itself (its ROM in the SUB-ROM's slot): the chip is always there. */
+  private builtInMusic = false;
+  /** What the player asked for (setFm), apart from a BIOS's own. */
+  private fmWanted = false;
   /** The disk drive's ROM in slot 3-1, when there is one. */
   private diskSlot: DiskRomSlot | null = null;
   /** The disk in drive A. */
   disk: Disk | null = null;
+  /**
+   * Port F4h on an MSX2+: the BIOS sets bit 7 once it has started, and a
+   * reset (unlike power-off) keeps it, so the logo shows only at power-on.
+   */
+  private bootFlags = 0;
   /** CPU cycles of the frames before this one (cycle counts restart each frame). */
   private cycleBase = 0;
   /** Called after the MSX wrote to the disk. */
@@ -204,6 +219,9 @@ export class Msx {
       this.vdp = model === 'msx1' ? new Vdp() : new V9938(model === 'msx2+', () => this.cpu.cycles, true);
     }
     this.bios = bios;
+    this.builtInMusic = hasMusic(bios.sub);
+    const fmOn = this.fmWanted || this.builtInMusic;
+    if (fmOn !== Boolean(this.fm)) this.fm = fmOn ? this.newFm() : null;
     this.layoutSlot3();
     const m = bios.main;
     const body = (at: number) => (m[at] === 0xc3 ? m[at + 1] | (m[at + 2] << 8) : -1);
@@ -217,10 +235,11 @@ export class Msx {
    * (the RAM in 3-0), as MSX1s with something built in did.
    */
   private layoutSlot3(): void {
-    const fm = this.fm ? new Rom().place(0x4000, musicRom()) : EMPTY;
+    // Our MSX-MUSIC ROM, unless the BIOS has the real one.
+    const fm = this.fm && !this.builtInMusic ? new Rom().place(0x4000, musicRom()) : EMPTY;
     const disk = this.diskSlot ?? EMPTY;
     if (this.model === 'msx1') {
-      if (!this.fm && !this.diskSlot) {
+      if (fm === EMPTY && !this.diskSlot) {
         this.slots.insert(3, this.ram);
         return;
       }
@@ -235,16 +254,19 @@ export class Msx {
     this.slots.insert(3, this.expanded);
   }
 
-  /** Switches MSX-MUSIC on or off. Power-cycle for software to find it. */
+  /** Switches MSX-MUSIC on or off (a BIOS with its own keeps it). Power-cycle for software to find it. */
   setFm(on: boolean): void {
+    this.fmWanted = on;
+    on ||= this.builtInMusic;
     if (on === Boolean(this.fm)) return;
-    if (on) {
-      this.fm = new Ym2413(this.sampleRate, CPU_CLOCK);
-      this.fm.now = () => this.cpu.cycles;
-    } else {
-      this.fm = null;
-    }
+    this.fm = on ? this.newFm() : null;
     this.layoutSlot3();
+  }
+
+  private newFm(): Ym2413 {
+    const fm = new Ym2413(this.sampleRate, CPU_CLOCK);
+    fm.now = () => this.cpu.cycles;
+    return fm;
   }
 
   /** Puts a disk ROM (16K) in slot 3-1, or takes it out. Power-cycle to use it. */
@@ -306,6 +328,7 @@ export class Msx {
 
   /** Power off and on: RAM too is cleared. */
   powerCycle(): void {
+    this.bootFlags = 0;
     this.ram.data.fill(0);
     this.mapper.data.fill(0);
     this.reset();
@@ -530,6 +553,7 @@ export class Msx {
       cycleBase: this.cycleBase,
       toType: this.toType,
       keysAsked: this.keysAsked,
+      bootFlags: this.bootFlags,
       cpu: grab(this.cpu, ['mem']),
       primary: this.slots.primary,
       subslots: this.expanded.reg,
@@ -558,6 +582,7 @@ export class Msx {
     this.cycleBase = s.cycleBase;
     this.toType = s.toType;
     this.keysAsked = s.keysAsked;
+    this.bootFlags = s.bootFlags ?? 0;
     put(this.cpu, s.cpu);
     this.expanded.reg = s.subslots;
     this.slots.primary = s.primary;
@@ -602,6 +627,7 @@ export class Msx {
     if (this.model !== 'msx1') {
       if (port >= 0xfc) return this.mapper.getPage(port - 0xfc);
       if (port === 0xb5) return this.rtc.read();
+      if (port === 0xf4 && this.model === 'msx2+') return this.bootFlags;
     }
     for (const c of this.cartridges) {
       const v = c?.ioIn(port) ?? -1;
@@ -624,6 +650,7 @@ export class Msx {
       case 0x9b: this.vdp.writeIndirect(value); break;
       case 0xb4: if (this.model !== 'msx1') this.rtc.select(value); break;
       case 0xb5: if (this.model !== 'msx1') this.rtc.write(value); break;
+      case 0xf4: if (this.model === 'msx2+') this.bootFlags = value; break;
       case 0xfc: case 0xfd: case 0xfe: case 0xff:
         if (this.model !== 'msx1') { this.mapper.setPage(port - 0xfc, value); break; }
         for (const c of this.cartridges) if (c?.ioOut(port, value)) break;

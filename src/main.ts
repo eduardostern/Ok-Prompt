@@ -566,7 +566,10 @@ async function start(): Promise<void> {
   const biosNoteText = biosNote.textContent;
   const label = (b: StoredCart) => {
     const model = biosModel(b.data);
-    const name = biosLabel(b.data) ?? b.name.replace(/\.[a-z0-9]+$/i, '');
+    const file = b.name.replace(/\.[a-z0-9]+$/i, '');
+    const known = biosLabel(b.data);
+    // A plain "MSX BASIC" says little (the Expert and Hotbit MSX2+ kits both are): add the file's name.
+    const name = !known ? file : known.startsWith('MSX BASIC') && biosModel(b.data) !== 'msx1' ? `${known} · ${file}` : known;
     return model === 'msx1' ? name : `${name} (${model === 'msx2' ? 'MSX2' : 'MSX2+'})`;
   };
   /** On an MSX2 the BIOS sets 50 or 60 Hz in the VDP; the menu only drives an MSX1. */
@@ -618,7 +621,8 @@ async function start(): Promise<void> {
    * MSX2, the SUB-ROM (16K starting "CD"), or one dump with both.
    */
   const biosSet = (roms: { name: string; data: Uint8Array }[]): StoredCart => {
-    const isSub = (d: Uint8Array) => d.length === 0x4000 && d[0] === 0x43 && d[1] === 0x44;
+    // 16K, or 32K with more in its second half (MSX-MUSIC or a logo, as in the Brazilian MSX2+ kits).
+    const isSub = (d: Uint8Array) => (d.length === 0x4000 || d.length === 0x8000) && d[0] === 0x43 && d[1] === 0x44;
     let mainRom = roms.find((r) => r.data.length >= 0x4000 && r.data.length <= 0x10000 && r.data[0] === 0xf3);
     if (!mainRom) throw new Error('no MSX main ROM among them (it starts with DI, 16K to 64K)');
     let subRom = roms.find((r) => isSub(r.data))?.data;

@@ -9,16 +9,22 @@ import { describe, expect, it } from 'vitest';
 import { KeyInput, KeyTable, msxText } from '../src/msx/keyboard';
 import { printedText } from '../src/msx/printer';
 import { blankDisk, Disk, diskRomIn } from '../src/msx/disk';
-import { biosLabel, checkBios, Msx } from '../src/msx/machine';
+import { biosLabel, checkBios, hasMusic, Msx } from '../src/msx/machine';
 import { asciiCas, Tape } from '../src/msx/tape';
 import { ModemCartridge } from '../src/msx/modem-cart';
 
 const path = process.env.MSX_BIOS?.replace(/^~/, process.env.HOME ?? '~');
 const main = path ? new Uint8Array(readFileSync(path)) : new Uint8Array(0);
+// An MSX2 or MSX2+ also needs its SUB-ROM (MSX_SUB), 16K or 32K (the Brazilian kits').
+const subPath = process.env.MSX_SUB?.replace(/^~/, process.env.HOME ?? '~');
+const sub = subPath ? new Uint8Array(readFileSync(subPath)) : undefined;
+const bios = { main, sub };
+/** Frames to the Ok prompt: an MSX2's logo takes longer. */
+const BOOT = sub ? 500 : 400;
 
 const screen = (m: Msx) => {
-  const nt = (m.vdp.regs[2] & 0x0f) << 10;
-  const cols = m.vdp.regs[1] & 0x10 ? 40 : 32;
+  const cols = m.vdp.textColumns() || 32;
+  const nt = (m.vdp.regs[2] & (cols === 80 ? 0x7c : 0x7f)) << 10;
   const v = m.vdp.vram;
   const lines: string[] = [];
   for (let y = 0; y < 24; y++) lines.push(String.fromCharCode(...v.subarray(nt + y * cols, nt + (y + 1) * cols)).trimEnd());
@@ -27,9 +33,9 @@ const screen = (m: Msx) => {
 const frames = (m: Msx, n: number) => { for (let i = 0; i < n; i++) m.runFrame(); };
 
 function boot(): Msx {
-  const m = new Msx({ main });
+  const m = new Msx(bios);
   m.powerCycle();
-  frames(m, 400);
+  frames(m, BOOT);
   return m;
 }
 
@@ -80,7 +86,7 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
   });
 
   it('runs the modem cartridge\'s terminal with CALL TERM, and CTRL+STOP leaves it', () => {
-    const m = new Msx({ main });
+    const m = new Msx(bios);
     const cart = new ModemCartridge(new Uint8Array(readFileSync(new URL('../src/roms/okmodem.rom', import.meta.url))));
     m.insert(2, cart);
     m.powerCycle();
@@ -145,10 +151,10 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
 
   it('keeps all its RAM with MSX-MUSIC on (slot 3 expanded, RAM in 3-0)', () => {
     const free = (fm: boolean) => {
-      const m = new Msx({ main });
+      const m = new Msx(bios);
       m.setFm(fm);
       m.powerCycle();
-      frames(m, 400);
+      frames(m, BOOT);
       m.type('PRINT FRE(0)\r');
       frames(m, 60);
       return screen(m).match(/^ *(\d+) *$/m)?.[1];
@@ -165,7 +171,7 @@ describe.skipIf(!path || !diskPath)('a real BIOS with a real disk ROM (MSX_DISKR
   it('boots Disk BASIC, saves a program to the disk and lists it with FILES', () => {
     const rom = diskRomIn(new Uint8Array(readFileSync(diskPath!)));
     expect(rom).not.toBeNull();
-    const m = new Msx({ main });
+    const m = new Msx(bios);
     m.setDiskRom(rom);
     const disk = new Disk(blankDisk(), 'test.dsk');
     m.insertDisk(disk);
@@ -180,6 +186,21 @@ describe.skipIf(!path || !diskPath)('a real BIOS with a real disk ROM (MSX_DISKR
     frames(m, 300);
     expect(screen(m)).toMatch(/^ *OIDISCO/m);
     expect(disk.dirty || disk.data.some((b, i) => i >= 7 * 512 && i < 14 * 512 && b !== 0)).toBe(true);
+  });
+});
+
+describe.skipIf(!path || !hasMusic(sub))('a BIOS with MSX-MUSIC in its SUB-ROM (the Brazilian MSX2+ kit)', () => {
+  it('has the FM chip with the setting off, and its FM-BASIC plays through it', () => {
+    const m = new Msx(bios);
+    m.setFm(false);
+    expect(m.fm).not.toBeNull();
+    m.powerCycle();
+    frames(m, BOOT);
+    m.type('CALL MUSIC\rPLAY #2,"T120O4CDE"\r');
+    frames(m, 120);
+    expect(screen(m)).not.toMatch(/error/i);
+    // Channel 0 got an instrument and a note: key on, an F-number.
+    expect(m.fm!.reg[0x20] & 0x10 || m.fm!.reg[0x10]).toBeTruthy();
   });
 });
 

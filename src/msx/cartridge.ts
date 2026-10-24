@@ -19,7 +19,7 @@
 import { Scc } from './scc';
 import type { SlotDevice } from './slots';
 
-export type Mapper = 'plain' | 'konami' | 'konamiscc' | 'ascii8' | 'ascii16';
+export type Mapper = 'plain' | 'konami' | 'konamiscc' | 'ascii8' | 'ascii16' | 'ascii8sram' | 'ascii16sram';
 
 export const MAPPERS: Record<Mapper, string> = {
   plain: 'Plain ROM (up to 64K)',
@@ -27,7 +27,12 @@ export const MAPPERS: Record<Mapper, string> = {
   konamiscc: 'Konami SCC',
   ascii8: 'ASCII 8K',
   ascii16: 'ASCII 16K',
+  ascii8sram: 'ASCII 8K + 8K battery RAM',
+  ascii16sram: 'ASCII 16K + 2K battery RAM',
 };
+
+/** Size of the battery-backed RAM of each mapper that has one. */
+const SRAM_SIZE: Partial<Record<Mapper, number>> = { ascii8sram: 0x2000, ascii16sram: 0x800 };
 
 /** Where a plain ROM goes: from its size and its "AB" header. */
 export function plainBase(rom: Uint8Array): number {
@@ -47,7 +52,7 @@ export function plainBase(rom: Uint8Array): number {
 /** The likely mapper of a ROM image. */
 export function guessMapper(rom: Uint8Array): Mapper {
   if (rom.length <= 0x10000) return 'plain';
-  const score: Record<Exclude<Mapper, 'plain'>, number> = { konami: 0, konamiscc: 0, ascii8: 0, ascii16: 0 };
+  const score: Record<'konami' | 'konamiscc' | 'ascii8' | 'ascii16', number> = { konami: 0, konamiscc: 0, ascii8: 0, ascii16: 0 };
   for (let i = 0; i + 2 < rom.length; i++) {
     if (rom[i] !== 0x32) continue; // LD (nnnn),A
     const addr = rom[i + 1] | (rom[i + 2] << 8);
@@ -64,7 +69,7 @@ export function guessMapper(rom: Uint8Array): Mapper {
   if (score.ascii8 > 0) score.ascii8--;
   let best: Mapper = 'konami';
   let top = -1;
-  for (const [k, v] of Object.entries(score) as [Exclude<Mapper, 'plain'>, number][]) {
+  for (const [k, v] of Object.entries(score) as [keyof typeof score, number][]) {
     if (v > top) { best = k; top = v; }
   }
   return best;
@@ -78,6 +83,16 @@ export class Cartridge implements SlotDevice {
   private banks = [0, 1, 2, 3];
   private base = 0x4000;
   private mask: number;
+  /**
+   * Battery-backed RAM (games keep saves there), or null. A bank register
+   * set to a value with `sramBit` on shows it in that window instead of
+   * ROM; it can be written in 8000h-BFFFh only.
+   */
+  readonly sram: Uint8Array | null;
+  private sramBit = 0;
+  private sramOn = [false, false, false, false];
+  /** Called after the program wrote to the battery-backed RAM. */
+  onSramWrite?: () => void;
 
   constructor(readonly rom: Uint8Array, mapper?: Mapper, readonly name = '') {
     this.mapper = mapper ?? guessMapper(rom);
@@ -88,6 +103,10 @@ export class Cartridge implements SlotDevice {
     let n = 1;
     while (n < pages) n <<= 1;
     this.mask = n - 1;
+    const sram = SRAM_SIZE[this.mapper];
+    this.sram = sram ? new Uint8Array(sram).fill(0xff) : null;
+    // ASCII 8K: the bit above the ROM's banks; ASCII 16K: bit 4.
+    this.sramBit = this.mapper === 'ascii8sram' ? n : 0x10;
   }
 
   read(addr: number): number {
@@ -98,6 +117,7 @@ export class Cartridge implements SlotDevice {
     if (addr < 0x4000 || addr >= 0xc000) return 0xff;
     if (this.sccOn(addr)) return this.scc!.read(addr);
     const window = (addr - 0x4000) >> 13;
+    if (this.sramOn[window]) return this.sram![addr & (this.sram!.length - 1)];
     const off = ((this.banks[window] & this.mask) << 13) | (addr & 0x1fff);
     return off < this.rom.length ? this.rom[off] : 0xff;
   }
@@ -121,7 +141,30 @@ export class Cartridge implements SlotDevice {
         if (addr >= 0x6000 && addr < 0x6800) { this.banks[0] = value * 2; this.banks[1] = value * 2 + 1; }
         else if (addr >= 0x7000 && addr < 0x7800) { this.banks[2] = value * 2; this.banks[3] = value * 2 + 1; }
         break;
+      case 'ascii8sram':
+        if (addr >= 0x6000 && addr < 0x8000) {
+          const w = (addr >> 11) & 3;
+          this.sramOn[w] = (value & this.sramBit) !== 0;
+          this.banks[w] = value & ~this.sramBit;
+        } else this.writeSram(addr, value);
+        break;
+      case 'ascii16sram':
+        if ((addr >= 0x6000 && addr < 0x6800) || (addr >= 0x7000 && addr < 0x7800)) {
+          const w = addr < 0x7000 ? 0 : 2;
+          const on = (value & this.sramBit) !== 0;
+          this.sramOn[w] = this.sramOn[w + 1] = on;
+          this.banks[w] = (value & ~this.sramBit) * 2;
+          this.banks[w + 1] = (value & ~this.sramBit) * 2 + 1;
+        } else this.writeSram(addr, value);
+        break;
     }
+  }
+
+  /** A write in 8000h-BFFFh where the battery RAM shows. */
+  private writeSram(addr: number, value: number): void {
+    if (addr < 0x8000 || addr >= 0xc000 || !this.sramOn[(addr - 0x4000) >> 13]) return;
+    this.sram![addr & (this.sram!.length - 1)] = value;
+    this.onSramWrite?.();
   }
 
   /** Text columns on the screen now, as the machine tells (the modem tells the BBS). */
@@ -140,6 +183,7 @@ export class Cartridge implements SlotDevice {
   /** Back to the power-on banks. */
   reset(): void {
     this.banks = [0, 1, 2, 3];
+    this.sramOn = [false, false, false, false];
     this.scc?.reset();
   }
 

@@ -27,7 +27,7 @@ import { SoundOut } from './ui/sound-out';
 import { MsxKeyboard } from './ui/msx-keyboard';
 import {
   loadAllBios, loadAllDiskRoms, loadCart, loadDisk, loadShelf, loadTape, removeBios, removeDiskRom, saveBios, saveCart,
-  saveDisk, saveDiskRom, saveTape, shelve, StoredCart, unshelve,
+  saveDisk, saveDiskRom, saveTape, shelve, StoredCart, unshelve, loadSram, saveSram,
 } from './ui/store';
 import { blankDisk, Disk, diskRomIn, SECTOR } from './msx/disk';
 
@@ -301,7 +301,20 @@ async function start(): Promise<void> {
   /** The shelf's built-in entry for the modem cartridge. */
   const MODEM_CART: StoredCart = { name: MODEM_CART_NAME, data: modemRom, mapper: 'modem' };
   const makeCart = (stored: StoredCart): Cartridge => {
-    if (stored.mapper !== 'modem') return new Cartridge(stored.data, stored.mapper as Mapper | undefined, stored.name);
+    if (stored.mapper !== 'modem') {
+      const cart = new Cartridge(stored.data, stored.mapper as Mapper | undefined, stored.name);
+      const sram = cart.sram;
+      if (sram) {
+        // Saved games: back from the browser, and kept a moment after each write.
+        void loadSram(stored.name).then((d) => { if (d && d.length === sram.length) sram.set(d); });
+        let timer = 0;
+        cart.onSramWrite = () => {
+          clearTimeout(timer);
+          timer = window.setTimeout(() => void saveSram(stored.name, sram.slice()), 500);
+        };
+      }
+      return cart;
+    }
     const cart = new ModemCartridge(modemRom, line); // always the ROM of this version
     line.setup(cart.modem);
     return cart;

@@ -40,8 +40,13 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
   with their own turbo loaders do not load this way.
 - The bank-switching scheme of big cartridges is guessed from the code;
   change it under the cartridge if a game does not start.
-- The PC keyboard is the MSX keyboard: GRAPH is left Alt, CODE right Alt,
-  STOP F7, SELECT F8, F6-F10 are Shift + F1-F5. A gamepad is joystick 1.
+- Keys type what is printed on your PC keyboard: symbols and accents go
+  through the key table of the BIOS in use, so a Brazilian PC keyboard
+  types ç, ã and " correctly on a Gradiente Expert (1.0's own character set
+  included). Letters, arrows and Space keep their MSX places for games; the
+  Keyboard setting can put every key back in place. GRAPH is left Alt,
+  CODE right Alt, STOP F7, SELECT F8, F6-F10 are Shift + F1-F5. A gamepad
+  is joystick 1.
 
 ## What is emulated
 

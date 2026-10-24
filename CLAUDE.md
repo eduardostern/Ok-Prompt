@@ -13,6 +13,8 @@ npx tsc --noEmit                 # typecheck (npm run build also runs it)
 npm run build                    # static site in dist/
 npm run deploy                   # build + wrangler deploy to ok-prompt.stern.workers.dev
 ZEX=1 npx vitest run tests/zex.test.ts   # zexdoc + zexall, ~2.5 min
+MSX_BIOS=~/Downloads/expert_1.1_basic-bios1.rom npx vitest run tests/real-bios.test.ts
+                                 # MSX BASIC from a real BIOS dump (never in the repo)
 ```
 
 Run `npx tsc --noEmit` and `npm test` before every commit. Rerun the zex
@@ -58,6 +60,12 @@ exerciser after any change to `src/z80.ts`.
 - Tapes: the machine traps the BIOS tape entries 00E1h-00F3h (only while
   slot 0 is at page 0) and RETs itself. `Msx.type()` writes into the key
   buffer (FBF0h, PUTPNT/GETPNT) when the program next calls CHGET (009Fh).
+- MSX BASIC calls CHGET's body (the JP target at 009Fh, 10CBh in Microsoft
+  BIOSes), not 009Fh; the machine traps both.
+- Key tables: six 48-byte tables (plain, SHIFT, GRAPH, GRAPH+SHIFT, CODE,
+  CODE+SHIFT) found by "0123456789" (0DA5h in Microsoft BIOSes). C-BIOS
+  decodes only plain and SHIFT. The Expert 1.0 font (CGTABL at 0004h) has
+  ç/Ç on 60h/7Eh and tilde letters on the umlaut codes (`detectCharset`).
 - C-BIOS only starts cartridges: no BASIC, no disk. MSX BASIC and MSX-DOS
   ROMs are copyrighted; never add them to the repo.
 

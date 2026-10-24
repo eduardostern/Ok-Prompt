@@ -130,7 +130,14 @@
           </label>
 
           <h2>Controls</h2>
-          <p class="note">The keyboard is the MSX keyboard. Arrow keys and Space work in most games.</p>
+          <label class="field">Keyboard
+            <select id="keymap">
+              <option value="char">Types what your keys say</option>
+              <option value="position">MSX key positions</option>
+            </select>
+          </label>
+          <p class="note" id="keymap-note"></p>
+          <p class="note">Arrow keys and Space work in most games.</p>
           <dl class="keys" id="special-keys"></dl>
           <p class="note" id="gamepad">No gamepad. Plug one in and press a button.</p>
         </aside>

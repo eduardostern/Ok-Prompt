@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Cartridge, guessMapper, plainBase } from '../src/msx/cartridge';
 import { checkBios, Msx } from '../src/msx/machine';
-import { msxKey } from '../src/msx/keyboard';
+import { detectCharset, KeyInput, KeyTable, msxCode, msxCodes, msxKey } from '../src/msx/keyboard';
 import { Ppi } from '../src/msx/ppi';
 import { Scc } from '../src/msx/scc';
 import { CAS_MARKER, loadCommand, Tape } from '../src/msx/tape';
@@ -323,6 +323,92 @@ describe('keyboard', () => {
     ppi.out(0xaa, row); // select the row
     expect(ppi.in(0xa9)).toBe(0xff & ~(1 << bit));
     expect(msxKey('Enter')).toEqual([7, 7]);
+  });
+});
+
+describe('typing by character', () => {
+  const table = KeyTable.find(BIOS.main)!;
+
+  it('finds the BIOS key table and the keys for each character', () => {
+    expect(table).not.toBeNull();
+    expect(msxCode('ã')).toBe(0xb1);
+    expect(msxCode('ç')).toBe(0x87);
+    expect(msxCode('€')).toBe(-1);
+    expect(table.lookup('@')).toEqual({ row: 0, bit: 2, shift: true, graph: false, code: false });
+    expect(table.lookup(';')).toEqual({ row: 1, bit: 7, shift: false, graph: false, code: false });
+    expect(table.lookup('ç')).toMatchObject({ code: true, graph: false });
+    expect(table.lookup('ã')).toMatchObject({ code: true });
+    expect(KeyTable.find(new Uint8Array(0x8000))).toBeNull();
+  });
+
+  it('knows the Expert 1.0 character set by the tilde drawn over 84h', () => {
+    const rom = new Uint8Array(0x8000);
+    rom.set([0x00, 0x10], 4); // CGTABL = 1000h
+    expect(detectCharset(rom)).toBe('international');
+    expect(detectCharset(BIOS.main)).toBe('international');
+    rom.set([0x50, 0xa0], 0x1000 + 0x84 * 8); // ~ over the a
+    expect(detectCharset(rom)).toBe('brazil-1.0');
+    expect(msxCodes('ç', 'brazil-1.0')).toEqual([0x60]);
+    expect(msxCodes('ã', 'brazil-1.0')[0]).toBe(0x84);
+    expect(msxCodes('ä', 'brazil-1.0')).toEqual([]);
+    expect(msxCodes('ç')).toEqual([0x87]);
+  });
+
+  it('presses the MSX key and modifiers for a character, whatever the PC shift says', () => {
+    const ppi = new Ppi(new Slots());
+    const keys = new KeyInput(ppi);
+    keys.table = table;
+    const down = (r: number, b: number) => !(ppi.rows[r] & (1 << b));
+    // A Brazilian PC: Shift+Digit2 types @ (as on the MSX), Shift+Quote types ^.
+    keys.down('ShiftLeft', 'Shift');
+    keys.down('Quote', '^');
+    const caret = table.lookup('^')!;
+    expect(down(caret.row, caret.bit)).toBe(true);
+    expect(down(6, 0)).toBe(caret.shift);
+    keys.up('Quote');
+    expect(down(caret.row, caret.bit)).toBe(false);
+    expect(down(6, 0)).toBe(true); // the PC shift is still held
+    keys.up('ShiftLeft');
+    // ç on its own PC key (Semicolon on ABNT2) needs CODE on the MSX.
+    keys.down('Semicolon', 'ç');
+    expect(down(6, 4)).toBe(true);
+    keys.up('Semicolon');
+    expect(down(6, 4)).toBe(false);
+    // Dead keys wait for the composed character; letters stay positional.
+    expect(keys.down('BracketRight', 'Dead')).toBe(true);
+    expect([...ppi.rows]).toEqual(Array(11).fill(0xff));
+    keys.down('KeyA', 'a');
+    expect(down(2, 6)).toBe(true);
+    keys.releaseAll();
+    expect([...ppi.rows]).toEqual(Array(11).fill(0xff));
+  });
+
+  it('gets the right characters to a program through the BIOS', () => {
+    const c = new Uint8Array(0x4000).fill(0xff);
+    c.set([0x41, 0x42, 0x10, 0x40], 0);
+    c.set([
+      0xcd, 0x9f, 0x00, 0x32, 0x00, 0xe0, // CALL CHGET; LD (E000h),A
+      0xcd, 0x9f, 0x00, 0x32, 0x01, 0xe0, // CALL CHGET; LD (E001h),A
+      0xcd, 0x9f, 0x00, 0x32, 0x02, 0xe0, // CALL CHGET; LD (E002h),A
+      0x18, 0xfe,
+    ], 0x10);
+    const m = new Msx(BIOS);
+    m.insert(1, new Cartridge(c, 'plain'));
+    m.reset();
+    const keys = new KeyInput(m.ppi);
+    keys.table = table;
+    const frames = (n: number) => { for (let i = 0; i < n; i++) m.runFrame(); };
+    const tap = (code: string, key: string) => { keys.down(code, key); frames(4); keys.up(code); frames(4); };
+    // C-BIOS decodes only the plain and SHIFT tables (not CODE or GRAPH, so
+    // no accents); a real BIOS such as the Expert's reads all six.
+    frames(300);
+    keys.down('ShiftLeft', 'Shift');
+    tap('Quote', '^'); // Brazilian PC: Shift+Quote is ^, on the MSX Shift+6
+    tap('Digit2', '@');
+    keys.up('ShiftLeft');
+    tap('Digit2', '2'); // the PC shift is up again: a plain 2
+    frames(10);
+    expect([...m.ram.data.subarray(0xe000, 0xe003)]).toEqual([0x5e, 0x40, 0x32]);
   });
 });
 

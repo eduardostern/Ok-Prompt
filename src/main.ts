@@ -7,7 +7,7 @@ import { unzipSync } from 'fflate';
 import mainRomUrl from './roms/cbios_main_msx1.rom?url';
 import logoRomUrl from './roms/cbios_logo_msx1.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
-import { msxKey, SPECIAL_KEYS } from './msx/keyboard';
+import { KeyInput, KeyTable, SPECIAL_KEYS } from './msx/keyboard';
 import { checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
 import { loadCommand, Tape } from './msx/tape';
 import { HEIGHT, WIDTH } from './msx/vdp';
@@ -37,11 +37,13 @@ interface Settings {
   autoPower: boolean;
   /** The system ROM: the built-in C-BIOS or the player's own. */
   bios: 'cbios' | 'own';
+  /** Keys type the character on the PC key (through the BIOS's table), or stay where they are. */
+  keymap: 'char' | 'position';
 }
 
 const DEFAULTS: Settings = {
   region: 'ntsc', speed: 1, smooth: false, scanlines: true, curve: true,
-  flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios',
+  flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios', keymap: 'char',
 };
 
 function loadSettings(): Settings {
@@ -73,6 +75,21 @@ async function start(): Promise<void> {
   const msx = new Msx(cbios, SAMPLE_RATE);
   let ownBios = await loadBios();
   if (settings.bios === 'own' && ownBios) msx.setBios({ main: ownBios.data });
+  const keys = new KeyInput(msx.ppi);
+  /** Reads the key table of the BIOS in use (when typing by character). */
+  const useKeyTable = () => {
+    const rom = settings.bios === 'own' && ownBios ? ownBios.data : main;
+    keys.table = settings.keymap === 'char' ? KeyTable.find(rom) : null;
+    const note = document.getElementById('keymap-note');
+    if (note) {
+      note.textContent = settings.keymap === 'position'
+        ? 'Every key stays in its place on the MSX keyboard, as the real one had them.'
+        : keys.table
+          ? `Symbols and accents follow your PC keyboard${keys.table.charset === 'brazil-1.0' ? ' (Expert 1.0 character set)' : ''}.`
+          : 'This BIOS has no key table to read: keys stay in their places.';
+    }
+  };
+  useKeyTable();
   const sound = new SoundOut(SAMPLE_RATE);
   const wrap = $('screen-wrap');
   const canvas = $<HTMLCanvasElement>('screen');
@@ -123,8 +140,8 @@ async function start(): Promise<void> {
   autoPower.addEventListener('change', () => { settings.autoPower = autoPower.checked; save(); });
   applyLook();
 
-  const keys = $('special-keys');
-  for (const [msxName, pc] of SPECIAL_KEYS) keys.insertAdjacentHTML('beforeend', `<dt>${msxName}</dt><dd>${pc}</dd>`);
+  const keyList = $('special-keys');
+  for (const [msxName, pc] of SPECIAL_KEYS) keyList.insertAdjacentHTML('beforeend', `<dt>${msxName}</dt><dd>${pc}</dd>`);
 
   $('fullscreen').addEventListener('click', () => {
     const monitor = document.querySelector<HTMLElement>('.monitor')!;
@@ -397,6 +414,7 @@ async function start(): Promise<void> {
     settings.bios = which;
     save();
     msx.setBios(which === 'own' && ownBios ? { main: ownBios.data } : cbios);
+    useKeyTable();
     showBios();
     if (which === 'own') tapeNote.textContent = '';
     if (running) await powerOn();
@@ -434,16 +452,22 @@ async function start(): Promise<void> {
   // ---- keyboard and gamepad ------------------------------------------------
 
   const typing = (e: Event) => (e.target as HTMLElement | null)?.closest('input, select, textarea, dialog');
-  const onKey = (down: boolean) => (e: KeyboardEvent) => {
+  window.addEventListener('keydown', (e) => {
     if (!running || typing(e) || e.metaKey) return;
-    const pos = msxKey(e.code);
-    if (!pos) return;
-    e.preventDefault();
-    msx.ppi.key(pos[0], pos[1], down);
-  };
-  window.addEventListener('keydown', onKey(true));
-  window.addEventListener('keyup', onKey(false));
-  window.addEventListener('blur', () => msx.ppi.rows.fill(0xff));
+    if (keys.down(e.code, e.key, e.ctrlKey, e.altKey)) e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => {
+    if (keys.up(e.code)) e.preventDefault();
+  });
+  window.addEventListener('blur', () => keys.releaseAll());
+  const keymap = $<HTMLSelectElement>('keymap');
+  keymap.value = settings.keymap;
+  keymap.addEventListener('change', () => {
+    settings.keymap = keymap.value as Settings['keymap'];
+    save();
+    keys.releaseAll();
+    useKeyTable();
+  });
 
   const padNote = $('gamepad');
   const pollPad = () => {

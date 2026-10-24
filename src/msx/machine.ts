@@ -77,6 +77,13 @@ export class Msx {
   onTapeWritten?: (tape: Tape) => void;
   /** Text waiting to be typed when the program next waits for a key. */
   private toType = '';
+  /**
+   * Where CHGET's jump at 009Fh leads in this BIOS. MSX BASIC calls that
+   * routine directly, not through 009Fh, so it is caught as well.
+   */
+  private chgetBody = -1;
+  /** Whether CHGET ran since reset: the BIOS has set up its key buffer by then. */
+  private chgetSeen = false;
   private readonly sampleRate: number;
 
   constructor(bios: Bios, sampleRate = 44100) {
@@ -105,6 +112,8 @@ export class Msx {
     const rom = new Rom().place(0x0000, bios.main);
     if (bios.logo) rom.place(0x8000, bios.logo);
     this.slots.insert(0, rom);
+    const m = bios.main;
+    this.chgetBody = m[CHGET] === 0xc3 ? m[CHGET + 1] | (m[CHGET + 2] << 8) : -1;
   }
 
   /** Plugs a cartridge into port 1 or 2 (null takes it out). Reset to use it. */
@@ -118,9 +127,9 @@ export class Msx {
   }
 
   /**
-   * Types `text` (\r for Enter) once the program waits for a key at CHGET,
-   * as MSX BASIC does at its Ok prompt. Typing it earlier would be lost
-   * when the BIOS clears the keyboard buffer at start-up.
+   * Types `text` (\r for Enter) into the BIOS key buffer once the BIOS has
+   * started up (it has called CHGET, as MSX BASIC does at its Ok prompt);
+   * text put there earlier would be lost when the BIOS clears the buffer.
    */
   type(text: string): void {
     this.toType += text;
@@ -140,6 +149,7 @@ export class Msx {
     for (const c of this.cartridges) c?.reset();
     this.tape?.rewind();
     this.toType = '';
+    this.chgetSeen = false;
     this.frames = 0;
   }
 
@@ -161,7 +171,7 @@ export class Msx {
         // The VDP holds the line until the status register is read.
         if (vdp.irq && cpu.interrupt()) continue;
         const pc = cpu.pc;
-        if (pc <= STMOTR && pc >= CHGET && this.trap(pc)) continue;
+        if (((pc <= STMOTR && pc >= CHGET) || pc === this.chgetBody) && this.trap(pc)) continue;
         cpu.step();
       }
       if (line < 192) vdp.renderLine(line);
@@ -174,7 +184,7 @@ export class Msx {
     this.psg.rebase(end);
     for (const c of this.cartridges) c?.scc?.rebase(end);
     this.frames++;
-    if (this.toType && this.frames >= TYPE_FALLBACK_FRAMES) this.fillKeyBuffer();
+    if (this.toType && (this.chgetSeen || this.frames >= TYPE_FALLBACK_FRAMES)) this.fillKeyBuffer();
   }
 
   /** Moves as much pending text as fits into the BIOS keyboard buffer. */
@@ -203,7 +213,8 @@ export class Msx {
   private trap(pc: number): boolean {
     if (this.slots.slotOf(0) !== 0) return false; // the BIOS is not at page 0
     const cpu = this.cpu;
-    if (pc === CHGET) {
+    if (pc === CHGET || pc === this.chgetBody) {
+      this.chgetSeen = true;
       if (this.toType) this.fillKeyBuffer();
       return false; // CHGET itself runs, and finds the keys
     }

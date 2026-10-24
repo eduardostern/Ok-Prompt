@@ -43,6 +43,11 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
   *Load* resets the MSX and types `BLOAD"CAS:",R`, `CLOAD` or `RUN"CAS:"`
   for you. *Blank* gives a tape to `CSAVE` on; download it with ⤓. Games
   with their own turbo loaders do not load this way.
+- The modem: put **☎ Ok-Modem** from the shelf in a slot; type `CALL TERM`
+  in BASIC (with C-BIOS it starts by itself). `ATI` lists the BBSes,
+  `ATDT 1` calls one, `ATDT DEEPSEEK` calls the AI board (your DeepSeek API
+  key): chat with the sysop or the BOFH, or order a BASIC program that
+  arrives on your tape for `RUN"CAS:"`. CTRL+STOP goes back to BASIC.
 - The bank-switching scheme of big cartridges is guessed from the code;
   change it under the cartridge if a game does not start.
 - Keys type what is printed on your PC keyboard: symbols and accents go
@@ -64,6 +69,7 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
 | PPI | Slot select, keyboard matrix, CAPS lamp, key click |
 | Cartridges | Plain ROMs up to 64K; Konami, Konami SCC, ASCII 8K and 16K MegaROMs |
 | Cassette | `.cas` tapes through the BIOS tape routines: load, record, download |
+| Modem | Ok-Modem cartridge: a Hayes modem on ports 04h/05h (A-Prompt's), a Z80 terminal in its ROM, real BBSes and the DeepSeek AI board |
 | SCC | Konami's five-channel wave-table chip in SCC cartridges, mixed with the PSG |
 
 ## Next
@@ -71,7 +77,6 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
 - Disk drives and MSX-DOS (which runs CP/M programs, like A-Prompt's).
 - Expanded slots, MSX2 (V9938).
 - Save states, touch controls, a WebGL CRT shader.
-- A modem cartridge on A-Prompt's telnet relay, to call the same BBSes.
 
 ## Credits and licence
 

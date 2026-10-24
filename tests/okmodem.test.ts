@@ -101,6 +101,21 @@ describe('the Ok-Modem cartridge', () => {
     expect(bbs.heard()).toBe('hi');
   });
 
+  it('gets through Synchronet\'s terminal probe and reports the 40x24 corner', async () => {
+    const { m, bbs } = await online();
+    bbs.heard();
+    // What Vertrauen sends first (recorded): save, attributes, an APC string,
+    // far down and right, a report, restore, a UTF-8 BOM, another report.
+    bbs.say('\r\n\x1b[s\x1b[0c\x1b_SyncTERM:Q;libsndfile\x1b\\\x1b[255B\x1b[255C\x1b[30;40m\b_\x1b[6n\x1b[u\x1b[!_\r\xef\xbb\xbf\x1b[6n\x1b[0m');
+    frames(m, 20);
+    // The corner, after BS and _; then column 4 after the 3-byte BOM (a CP437 terminal, not UTF-8).
+    expect(bbs.heard()).toMatch(/^\x1b\[24;40R\x1b\[\d+;4R$/);
+    expect(screen(m)).not.toContain('SyncTERM');
+    bbs.say('\x1b(B\x1b[2JClean\x1b[5A\x1b[3DX');
+    frames(m, 10);
+    expect(rows(m)[0].trimEnd()).toBe('ClXan'); // up stops at row 1; left 3 from column 6
+  });
+
   it('sends the arrows as ANSI and tells the BBS where the cursor is', async () => {
     const { m, bbs } = await online();
     const keys = new KeyInput(m.ppi);

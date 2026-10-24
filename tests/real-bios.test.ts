@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { KeyInput, KeyTable } from '../src/msx/keyboard';
 import { biosLabel, checkBios, Msx } from '../src/msx/machine';
-import { Tape } from '../src/msx/tape';
+import { asciiCas, Tape } from '../src/msx/tape';
 import { ModemCartridge } from '../src/msx/modem-cart';
 
 const path = process.env.MSX_BIOS?.replace(/^~/, process.env.HOME ?? '~');
@@ -100,6 +100,14 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
     m.type('PRINT 6*7\r');
     frames(m, 60);
     expect(screen(m)).toMatch(/^ * 42$/m);
+  });
+
+  it('runs a BASIC program put on tape as text (the AI board\'s way) with RUN"CAS:"', () => {
+    const m = boot();
+    m.tape = new Tape(asciiCas('OI', '10 CLS\n20 PRINT "OI DA FITA"\n30 END\n'), 'oi.cas');
+    m.type('RUN"CAS:"\r');
+    frames(m, 120);
+    expect(screen(m)).toMatch(/^ *OI DA FITA$/m);
   });
 
   it('saves to a blank tape with CSAVE and loads it back with CLOAD', () => {

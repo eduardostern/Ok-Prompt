@@ -101,3 +101,27 @@ export function loadCommand(kind: TapeKind): string {
     case 'ascii': return 'RUN"CAS:"\r';
   }
 }
+
+/**
+ * A tape holding one BASIC program as text, as MSX BASIC's SAVE"CAS:" makes
+ * it (and RUN"CAS:" or LOAD"CAS:" reads it): a header block (EAh x 10 and a
+ * 6-character name), then the lines, CR LF after each, in blocks of 256
+ * bytes, the last padded with 1Ah.
+ */
+export function asciiCas(name: string, text: string): Uint8Array {
+  const out: number[] = [];
+  const marker = () => { while (out.length & 7) out.push(0); out.push(...CAS_MARKER); };
+  marker();
+  out.push(...Array(10).fill(0xea));
+  const n = name.toUpperCase().replace(/[^\x20-\x7e]/g, '').slice(0, 6).padEnd(6, ' ');
+  for (const ch of n) out.push(ch.charCodeAt(0));
+  const body = text.replace(/\r\n?/g, '\n').replace(/\n*$/, '\n').replace(/\n/g, '\r\n');
+  const bytes = [...body].map((ch) => (ch.charCodeAt(0) < 0x100 ? ch.charCodeAt(0) : 0x3f));
+  bytes.push(0x1a);
+  while (bytes.length % 256) bytes.push(0x1a);
+  for (let i = 0; i < bytes.length; i += 256) {
+    marker();
+    out.push(...bytes.slice(i, i + 256));
+  }
+  return Uint8Array.from(out);
+}

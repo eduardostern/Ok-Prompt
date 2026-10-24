@@ -140,6 +140,31 @@
           <p class="note">Arrow keys and Space work in most games.</p>
           <dl class="keys" id="special-keys"></dl>
           <p class="note" id="gamepad">No gamepad. Plug one in and press a button.</p>
+
+          <h2>Modem</h2>
+          <p class="note">
+            Put <b>☎ Ok-Modem</b> from the shelf into a slot. With MSX BASIC type
+            <code>CALL TERM</code>; with C-BIOS it starts by itself. Then <code>ATI</code>
+            lists the BBSes, <code>ATDT 1</code> calls one, and <code>ATDT DEEPSEEK</code>
+            calls the AI board: chat with DeepSeek or the Bastard Operator From Hell,
+            or order a BASIC program that arrives on your tape.
+          </p>
+          <label class="field">DeepSeek API key (for the AI board)
+            <input id="deepseek-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" />
+          </label>
+          <div class="btn-row">
+            <button id="deepseek-save" class="key-btn" type="button">Save</button>
+            <button id="deepseek-forget" class="key-btn" type="button">Forget</button>
+          </div>
+          <p class="note" id="deepseek-status">No key yet.</p>
+          <details class="note howto">
+            <summary>How do I get a key?</summary>
+            <ol>
+              <li>Sign up at <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer">platform.deepseek.com</a>.</li>
+              <li>Add a little credit under <a href="https://platform.deepseek.com/top_up" target="_blank" rel="noreferrer">Top up</a>: the API is pay as you go.</li>
+              <li>Create a key under <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer">API keys</a> and paste it here. It stays in this browser and goes only to DeepSeek.</li>
+            </ol>
+          </details>
         </aside>
       </main>
 

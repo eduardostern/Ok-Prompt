@@ -12,6 +12,8 @@ npm test                         # vitest (zex tests skipped)
 npx tsc --noEmit                 # typecheck (npm run build also runs it)
 npm run build                    # static site in dist/
 npm run deploy                   # build + wrangler deploy to ok-prompt.stern.workers.dev
+npm run okmodem                  # reassemble src/roms/okmodem.asm into okmodem.rom (commit both)
+npx tsc -p worker                # typecheck the relay Worker (npm run build runs it)
 ZEX=1 npx vitest run tests/zex.test.ts   # zexdoc + zexall, ~2.5 min
 MSX_BIOS=~/Downloads/expert_1.1_basic-bios1.rom npx vitest run tests/real-bios.test.ts
                                  # MSX BASIC from a real BIOS dump (never in the repo)
@@ -38,6 +40,12 @@ exerciser after any change to `src/z80.ts`.
 | `src/msx/psg.ts` | AY-3-8910, `advanceTo(cycles)`, joystick on R14 |
 | `src/msx/scc.ts` | Konami SCC wave chip, owned by `konamiscc` cartridges, mixed in `Msx.takeAudio()` |
 | `src/msx/tape.ts` | `.cas` images: block markers, read/write, first file's kind and load command |
+| `src/msx/modem.ts`, `modem-cart.ts` | A-Prompt's Hayes modem; the cartridge puts it on ports 04h/05h |
+| `src/roms/okmodem.asm` | The modem cartridge's Z80 terminal (CALL TERM, ANSI to the MSX screen, CP437 table) |
+| `scripts/z80asm.ts`, `build-okmodem.ts` | Our Z80 assembler; the ROM build, CP437 box table found from the font |
+| `src/aiboard.ts`, `src/deepseek.ts` | The AI board behind ATDT DEEPSEEK; programs go to tape (`asciiCas`) |
+| `src/ui/modem-line.ts`, `call-sound.ts`, `modem-audio.ts` | Dialing (WebSocket gateway or /relay), call sounds, DeepSeek key |
+| `worker/` | The relay Worker: /relay WebSocket to telnet, phone book only (`src/phonebook.ts`) |
 | `src/msx/ppi.ts` | 8255: slot register, keyboard rows, click |
 | `src/msx/keyboard.ts` | PC `KeyboardEvent.code` to the MSX matrix |
 | `src/main.ts` | Page wiring, frame loop, cartridges, keys, gamepad |
@@ -67,6 +75,11 @@ exerciser after any change to `src/z80.ts`.
   CODE+SHIFT) found by "0123456789" (0DA5h in Microsoft BIOSes). C-BIOS
   decodes only plain and SHIFT. The Expert 1.0 font (CGTABL at 0004h) has
   ç/Ç on 60h/7Eh and tilde letters on the umlaut codes (`detectCharset`).
+- BBSes probe the terminal (ESC[6n, ESC _ strings) a few seconds after
+  connecting: the call sound connects only after the ring and keeps the
+  handshake short, or the answers come too late and the board goes DUMB.
+- MSX ASCII tapes: header EAh x 10 + name, then 256-byte blocks, CR LF
+  lines, 1Ah padding (asciiCas matches the Expert's SAVE"CAS:" exactly).
 - C-BIOS only starts cartridges: no BASIC, no disk. MSX BASIC and MSX-DOS
   ROMs are copyrighted; never add them to the repo.
 

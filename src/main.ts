@@ -6,10 +6,13 @@ import './style.css';
 import { unzipSync } from 'fflate';
 import mainRomUrl from './roms/cbios_main_msx1.rom?url';
 import logoRomUrl from './roms/cbios_logo_msx1.rom?url';
+import modemRomUrl from './roms/okmodem.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { KeyInput, KeyTable, SPECIAL_KEYS } from './msx/keyboard';
 import { biosLabel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
-import { loadCommand, Tape } from './msx/tape';
+import { asciiCas, loadCommand, Tape } from './msx/tape';
+import { MODEM_CART_NAME, ModemCartridge } from './msx/modem-cart';
+import { getDeepSeekKey, keyListeners, modemOptions, setDeepSeekKey } from './ui/modem-line';
 import { HEIGHT, WIDTH } from './msx/vdp';
 import { audioContext } from './ui/audio';
 import { askConfirm } from './ui/confirm';
@@ -70,7 +73,7 @@ async function bytes(url: string): Promise<Uint8Array> {
 }
 
 async function start(): Promise<void> {
-  const [main, logo] = await Promise.all([bytes(mainRomUrl), bytes(logoRomUrl)]);
+  const [main, logo, modemRom] = await Promise.all([bytes(mainRomUrl), bytes(logoRomUrl), bytes(modemRomUrl)]);
   const cbios = { main, logo };
   const msx = new Msx(cbios, SAMPLE_RATE);
   let biosList = await loadAllBios();
@@ -187,12 +190,41 @@ async function start(): Promise<void> {
     const el = slotEl(n);
     el.classList.toggle('full', Boolean(cart));
     el.querySelector('.cart-label')!.textContent = cart ? cart.name : 'Empty: click or drop a ROM';
+    el.classList.toggle('modem', cart instanceof ModemCartridge);
     const sel = el.querySelector<HTMLSelectElement>('.mapper')!;
     if (cart) sel.value = cart.mapper;
   };
 
+  // ---- the modem cartridge ---------------------------------------------------
+
+  /** The modem in a slot, if one is plugged in. */
+  const modem = () => msx.cartridges.find((c): c is ModemCartridge => c instanceof ModemCartridge)?.modem;
+  const line = modemOptions({
+    record: (name, program) => {
+      const tape = { name: `${name}.cas`, data: asciiCas(name, program) };
+      insertTape(tape);
+      tapeNote.textContent = `${name} came from the AI board. In BASIC: RUN"CAS:"`;
+      void shelve(tape).then(showShelf);
+    },
+    hasBasic: () => Boolean(ownBios()),
+    speaker: () => {
+      const m = modem();
+      return { on: (m?.speaker ?? 1) !== 0, volume: m?.volume ?? 2 };
+    },
+  });
+  /** The shelf's built-in entry for the modem cartridge. */
+  const MODEM_CART: StoredCart = { name: MODEM_CART_NAME, data: modemRom, mapper: 'modem' };
+  const makeCart = (stored: StoredCart): Cartridge => {
+    if (stored.mapper !== 'modem') return new Cartridge(stored.data, stored.mapper as Mapper | undefined, stored.name);
+    const cart = new ModemCartridge(modemRom, line); // always the ROM of this version
+    line.setup(cart.modem);
+    return cart;
+  };
+
   const insert = (n: 1 | 2, stored: StoredCart | null, persist = true) => {
-    msx.insert(n, stored ? new Cartridge(stored.data, stored.mapper as Mapper | undefined, stored.name) : null);
+    const old = msx.cartridges[n - 1];
+    if (old instanceof ModemCartridge) old.modem.hangup(false);
+    msx.insert(n, stored ? makeCart(stored) : null);
     if (persist) void saveCart(n, stored);
     showSlot(n);
     markShelf();
@@ -280,7 +312,7 @@ async function start(): Promise<void> {
     }
   }
   async function showShelf(): Promise<void> {
-    const carts = await loadShelf();
+    const carts = [MODEM_CART, ...await loadShelf()];
     shelfList.replaceChildren(...carts.map((cart) => {
       const li = document.createElement('li');
       li.dataset.name = cart.name;
@@ -297,6 +329,12 @@ async function start(): Promise<void> {
         insert(n, cart);
         if (!running) await powerOn();
       };
+      if (cart === MODEM_CART) {
+        li.classList.add('builtin');
+        button('shelf-cart', `☎ ${cart.name}`, 'Plug the modem cartridge into slot 2 (CALL TERM in BASIC)', () => void put(2));
+        button('shelf-slot', '1', 'Plug it into slot 1', () => void put(1));
+        return li; // built in: it cannot be taken off the shelf
+      }
       if (isTape(cart.name)) {
         button('shelf-cart', cart.name, `Put the tape ${cart.name} in the tape deck`, () => insertTape(cart));
       } else {
@@ -478,6 +516,30 @@ async function start(): Promise<void> {
     if (keys.up(e.code)) e.preventDefault();
   });
   window.addEventListener('blur', () => keys.releaseAll());
+  // ---- the DeepSeek key, for the AI board -----------------------------------
+
+  const keyInput = $<HTMLInputElement>('deepseek-key');
+  const keyStatus = $('deepseek-status');
+  const showKeyStatus = () => {
+    const key = getDeepSeekKey();
+    keyStatus.textContent = key ? `Key saved in this browser (${key.slice(0, 3)}…${key.slice(-4)}).` : 'No key yet.';
+  };
+  keyListeners.push(showKeyStatus);
+  showKeyStatus();
+  $('deepseek-save').addEventListener('click', () => {
+    const key = keyInput.value.trim();
+    if (!key) return;
+    setDeepSeekKey(key);
+    keyInput.value = '';
+  });
+  $('deepseek-forget').addEventListener('click', () => {
+    setDeepSeekKey(null);
+    keyInput.value = '';
+  });
+  keyInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('deepseek-save').click();
+  });
+
   const keymap = $<HTMLSelectElement>('keymap');
   keymap.value = settings.keymap;
   keymap.addEventListener('change', () => {

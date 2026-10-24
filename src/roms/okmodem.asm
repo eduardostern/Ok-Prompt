@@ -32,7 +32,8 @@ MDATA   equ 05h
 ESC     equ 1Bh
 
 ; The terminal's variables, in a frame on the stack, through IX.
-VSTATE  equ 0           ; 0 text, 1 after ESC, 2 in ESC [
+VSTATE  equ 0           ; 0 text, 1 after ESC, 2 in ESC [, 3 skip one byte,
+                        ; 4 in a string (ESC _ P ] ^ X) to ESC \ or BEL, 5 its ESC
 VNPAR   equ 1           ; which parameter
 VPAR    equ 2           ; four parameters
 VSAVY   equ 6           ; ESC [ s
@@ -231,9 +232,29 @@ rxctrl: cp 07h
 rxgotesc: ld (ix+VSTATE), 1
         ret
 
-rxesc:  cp 1
-        jr nz, rxcsi
-        ld a, c         ; after ESC: only ESC [ is understood
+rxesc:  cp 2
+        jr z, rxcsi
+        cp 3
+        jr z, rxreset   ; the byte after ESC ( and the like
+        cp 4
+        jr z, rxstring
+        cp 5
+        jr z, rxreset   ; the \ of ESC \
+        ld a, c         ; after ESC
+        cp '('
+        jr z, rxskip1
+        cp ')'
+        jr z, rxskip1
+        cp '_'
+        jr z, rxstr
+        cp 'P'
+        jr z, rxstr
+        cp ']'
+        jr z, rxstr
+        cp '^'
+        jr z, rxstr
+        cp 'X'
+        jr z, rxstr
         cp '['
         jr nz, rxreset
         ld (ix+VSTATE), 2
@@ -246,6 +267,18 @@ rxesc:  cp 1
         ret
 rxreset: xor a
         ld (ix+VSTATE), a
+        ret
+rxskip1: ld (ix+VSTATE), 3     ; ESC ( B: a character set, nothing to show
+        ret
+rxstr:  ld (ix+VSTATE), 4      ; ESC _ ... ESC \: a string for the terminal, not the screen
+        ret
+rxstring: ld a, c
+        cp ESC
+        jr z, rxstresc
+        cp 07h
+        jr z, rxreset
+        ret
+rxstresc: ld (ix+VSTATE), 5
         ret
 
 rxcsi:  ld a, c
@@ -299,31 +332,27 @@ paraddr: push ix
 ; The final byte of ESC [ ... (in C).
 csi:    ld a, c
         cp 'H'
-        jr z, csipos
+        jp z, csipos
         cp 'f'
-        jr z, csipos
+        jp z, csipos
         cp 'A'
-        ld b, 1Eh
-        jr z, csimove
+        jp z, csiup
         cp 'B'
-        ld b, 1Fh
-        jr z, csimove
+        jp z, csidown
         cp 'C'
-        ld b, 1Ch
-        jr z, csimove
+        jp z, csiright
         cp 'D'
-        ld b, 1Dh
-        jr z, csimove
+        jp z, csileft
         cp 'J'
-        jr z, csierase
+        jp z, csierase
         cp 'K'
-        jr z, csiline
+        jp z, csiline
         cp 's'
-        jr z, csisave
+        jp z, csisave
         cp 'u'
-        jr z, csirest
+        jp z, csirest
         cp 'n'
-        jr z, csireport
+        jp z, csireport
         ret             ; m (colours) and the rest: ignored
 
 csipos: ld a, (ix+VPAR)         ; row
@@ -340,15 +369,52 @@ cprow:  ld l, a
 cpcol:  ld h, a
         jp b_posit
 
-csimove: ld a, (ix+VPAR)
+; Cursor moves stop at the edges of the screen, as on a VT100 (the MSX's own
+; cursor-right code would wrap to the next line).
+csiup:  ld a, (ix+VPAR)
         call atleast1
-cmloop: push af
-        ld a, b
-        call b_chput
-        pop af
-        dec a
-        jr nz, cmloop
-        ret
+        ld b, a
+        ld a, (CSRY)
+        sub b
+        jr nc, cupok
+        xor a
+cupok:  call atleast1       ; from CSRY - n, at least row 1
+        jr cmrow
+csidown: ld a, (ix+VPAR)
+        call atleast1
+        ld b, a
+        ld a, (CSRY)
+        add a, b
+        jr c, cdmax
+        cp 25
+        jr c, cmrow
+cdmax:  ld a, 24
+cmrow:  ld l, a
+        ld a, (CSRX)
+        ld h, a
+        jp b_posit
+csileft: ld a, (ix+VPAR)
+        call atleast1
+        ld b, a
+        ld a, (CSRX)
+        sub b
+        jr nc, clok
+        xor a
+clok:   call atleast1
+        jr cmcol
+csiright: ld a, (ix+VPAR)
+        call atleast1
+        ld b, a
+        ld a, (CSRX)
+        add a, b
+        jr c, crmax
+        cp 41
+        jr c, cmcol
+crmax:  ld a, 40
+cmcol:  ld h, a
+        ld a, (CSRY)
+        ld l, a
+        jp b_posit
 
 csierase: ld a, (ix+VPAR)
         cp 2

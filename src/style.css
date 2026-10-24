@@ -405,7 +405,22 @@ body {
 .shelf button:hover { color: var(--text); background: rgba(125, 118, 252, 0.12); }
 .shelf .shelf-cart { flex: 1; min-width: 0; text-align: left; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .shelf .shelf-slot, .shelf .shelf-del { flex: none; border-left: 1px solid var(--line); }
-.shelf:has(li) #shelf-empty { display: none; }
+.shelf:has(li:not(.builtin)) #shelf-empty { display: none; }
+.shelf li.builtin { border-color: rgba(94, 220, 120, 0.45); }
+.shelf li.builtin .shelf-cart { color: var(--green); }
+.slot.modem .mapper { visibility: hidden; }
+.panel code { font-family: var(--mono); color: var(--accent); }
+.field input[type="password"], .field input[type="text"] {
+  font: 12px var(--mono);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #0f1015;
+  color: var(--text);
+}
+.howto summary { cursor: pointer; color: var(--accent); }
+.howto ol { margin: 6px 0 0; padding-left: 18px; }
+.howto a { color: var(--accent); }
 
 /* ---- footer ------------------------------------------------------------- */
 

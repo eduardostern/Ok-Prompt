@@ -5,6 +5,7 @@
  *   1, 2            the cartridge in each slot
  *   "shelf:<name>"  every cartridge ever loaded, to pick again later
  *   "bios"          the player's own system ROM (C-BIOS needs no entry)
+ *   "tape"          the cassette in the tape deck, with what was recorded
  */
 
 const DB = 'ok-prompt';
@@ -47,6 +48,9 @@ export const loadCart = (slot: number) => run<StoredCart>('readonly', (s) => s.g
 
 export const saveBios = (bios: StoredCart | null) => put('bios', bios);
 export const loadBios = () => run<StoredCart>('readonly', (s) => s.get('bios'));
+
+export const saveTape = (tape: StoredCart | null) => put('tape', tape);
+export const loadTape = () => run<StoredCart>('readonly', (s) => s.get('tape'));
 
 export const shelve = (cart: StoredCart) => put(SHELF + cart.name, cart);
 export const unshelve = (name: string) => put(SHELF + name, null);

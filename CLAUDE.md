@@ -34,6 +34,7 @@ exerciser after any change to `src/z80.ts`.
 | `src/msx/vdp.ts` | TMS9918A, `renderLine` per picture line, `vblank` |
 | `src/msx/psg.ts` | AY-3-8910, `advanceTo(cycles)`, joystick on R14 |
 | `src/msx/scc.ts` | Konami SCC wave chip, owned by `konamiscc` cartridges, mixed in `Msx.takeAudio()` |
+| `src/msx/tape.ts` | `.cas` images: block markers, read/write, first file's kind and load command |
 | `src/msx/ppi.ts` | 8255: slot register, keyboard rows, click |
 | `src/msx/keyboard.ts` | PC `KeyboardEvent.code` to the MSX matrix |
 | `src/main.ts` | Page wiring, frame loop, cartridges, keys, gamepad |
@@ -53,6 +54,9 @@ exerciser after any change to `src/z80.ts`.
 - PSG tone frequency is clock / (16 x period) with clock = CPU / 2.
 - The SCC appears at 9800h-9FFFh only while 3Fh is in the 8000h bank
   register (written at 9000h); its frequency is CPU / (32 x (period + 1)).
+- Tapes: the machine traps the BIOS tape entries 00E1h-00F3h (only while
+  slot 0 is at page 0) and RETs itself. `Msx.type()` writes into the key
+  buffer (FBF0h, PUTPNT/GETPNT) when the program next calls CHGET (009Fh).
 - C-BIOS only starts cartridges: no BASIC, no disk. MSX BASIC and MSX-DOS
   ROMs are copyrighted; never add them to the repo.
 

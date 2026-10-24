@@ -88,7 +88,23 @@
               <select class="mapper" aria-label="Bank switching of slot 2"></select>
               <button class="eject" type="button" data-action="eject" title="Eject">⏏</button>
             </div>
-            <input id="rom-file" type="file" accept=".rom,.mx1,.mx2,.bin,.zip" hidden />
+            <div class="tape" id="tape">
+              <span class="slot-no" aria-hidden="true">▭</span>
+              <button class="cart" type="button" id="tape-load" title="Insert a tape (.cas or .zip)">
+                <span class="cart-label" id="tape-label">No tape: click or drop a .cas</span>
+              </button>
+              <span class="tape-pos" id="tape-pos"></span>
+              <div class="tape-keys">
+                <button type="button" id="tape-play" title="Rewind, reset and type the command that loads this tape">▶ Load</button>
+                <button type="button" id="tape-rewind" title="Rewind">⏮</button>
+                <button type="button" id="tape-save" title="Download the tape (with what was recorded on it)">⤓</button>
+                <button type="button" id="tape-blank" title="Insert a blank tape to record on (CSAVE, SAVE&quot;CAS:&quot;, BSAVE&quot;CAS:&quot;)">＋ Blank</button>
+                <button type="button" class="eject" id="tape-eject" title="Eject">⏏</button>
+              </div>
+              <p class="note tape-note" id="tape-note"></p>
+            </div>
+            <input id="rom-file" type="file" accept=".rom,.mx1,.mx2,.bin,.cas,.zip" hidden />
+            <input id="tape-file" type="file" accept=".cas,.zip" hidden />
           </div>
 
           <div class="shelf" aria-label="Cartridge shelf">

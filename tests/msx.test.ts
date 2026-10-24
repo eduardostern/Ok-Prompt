@@ -5,6 +5,7 @@ import { checkBios, Msx } from '../src/msx/machine';
 import { msxKey } from '../src/msx/keyboard';
 import { Ppi } from '../src/msx/ppi';
 import { Scc } from '../src/msx/scc';
+import { CAS_MARKER, loadCommand, Tape } from '../src/msx/tape';
 import { Psg } from '../src/msx/psg';
 import { Ram, Rom, Slots } from '../src/msx/slots';
 import { BORDER_X, BORDER_Y, PALETTE, Vdp, WIDTH } from '../src/msx/vdp';
@@ -178,6 +179,58 @@ describe('SCC', () => {
     const s = m.takeAudio();
     expect(s.length).toBeGreaterThan(700);
     expect(rising(s)).toBeGreaterThan(5);
+  });
+});
+
+describe('tape', () => {
+  /** A .cas with a binary file named HELLO whose data block is WORLD. */
+  const cas = () => new Uint8Array([
+    ...CAS_MARKER, ...Array(10).fill(0xd0), ...'HELLO '.split('').map((c) => c.charCodeAt(0)),
+    ...CAS_MARKER, ...'WORLD'.split('').map((c) => c.charCodeAt(0)),
+  ]);
+
+  it('finds blocks on 8-byte boundaries and knows the first file', () => {
+    const t = new Tape(cas());
+    expect(t.first()).toEqual({ kind: 'binary', name: 'HELLO' });
+    expect(t.findBlock()).toBe(true);
+    expect(t.pos).toBe(8);
+    t.pos = 9; // mid-block: the next marker is at 24
+    expect(t.findBlock()).toBe(true);
+    expect(t.pos).toBe(32);
+    expect(t.findBlock()).toBe(false);
+    expect(loadCommand('binary')).toBe('BLOAD"CAS:",R\r');
+    expect(new Tape(new Uint8Array(40)).first()).toBeNull();
+  });
+
+  it('answers the BIOS tape routines and types into the keyboard buffer', () => {
+    const c = new Uint8Array(0x4000).fill(0xff);
+    c.set([0x41, 0x42, 0x10, 0x40], 0);
+    const tapin = [0xcd, 0xe4, 0x00, 0xd3, 0x98, 0x10, 0xf9]; // CALL TAPIN; OUT (98h),A; DJNZ
+    c.set([
+      0xaf, 0xd3, 0x99, 0x3e, 0x40, 0xd3, 0x99, // VRAM address 0000h, write
+      0xcd, 0xe1, 0x00, 0x06, 0x10, ...tapin, 0xcd, 0xe7, 0x00, // header block: 16 bytes
+      0xcd, 0xe1, 0x00, 0x06, 0x05, ...tapin, 0xcd, 0xe7, 0x00, // data block: 5 bytes
+      0x3e, 0x01, 0xcd, 0xea, 0x00, // TAPOON
+      0x3e, 0x58, 0xcd, 0xed, 0x00, // TAPOUT 'X'
+      0xcd, 0xf0, 0x00, //             TAPOOF
+      0xcd, 0x9f, 0x00, 0x32, 0x00, 0xe0, // CHGET -> (E000h)
+      0xcd, 0x9f, 0x00, 0x32, 0x01, 0xe0, // CHGET -> (E001h)
+      0x18, 0xfe,
+    ], 0x10);
+    const m = new Msx(BIOS);
+    m.insert(1, new Cartridge(c, 'plain'));
+    m.tape = new Tape(cas(), 'hello.cas');
+    let written: Tape | null = null;
+    m.onTapeWritten = (t) => { written = t; };
+    m.reset();
+    m.type('Ok');
+    for (let i = 0; i < 300; i++) m.runFrame();
+    const vram = String.fromCharCode(...m.vdp.vram.subarray(10, 21));
+    expect(vram).toBe('HELLO WORLD');
+    expect(written).toBe(m.tape);
+    expect([...m.tape!.data.subarray(40)]).toEqual([...CAS_MARKER, 0x58]); // padded 37 -> 40
+    expect(String.fromCharCode(m.ram.data[0xe000], m.ram.data[0xe001])).toBe('Ok');
+    expect(m.typing).toBe(false);
   });
 });
 

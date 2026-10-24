@@ -9,12 +9,13 @@ import logoRomUrl from './roms/cbios_logo_msx1.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { msxKey, SPECIAL_KEYS } from './msx/keyboard';
 import { checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
+import { loadCommand, Tape } from './msx/tape';
 import { HEIGHT, WIDTH } from './msx/vdp';
 import { audioContext } from './ui/audio';
 import { askConfirm } from './ui/confirm';
 import { waitForPower, warmUp } from './ui/power';
 import { SoundOut } from './ui/sound-out';
-import { loadBios, loadCart, loadShelf, saveBios, saveCart, shelve, StoredCart, unshelve } from './ui/store';
+import { loadBios, loadCart, loadShelf, loadTape, saveBios, saveCart, saveTape, shelve, StoredCart, unshelve } from './ui/store';
 
 const SAMPLE_RATE = 44100;
 const MAX_ROM = 4 * 1024 * 1024;
@@ -183,7 +184,7 @@ async function start(): Promise<void> {
     let name = file.name;
     if (/\.zip$/i.test(name)) {
       const files = Object.entries(unzipSync(data)).filter(([n, d]) => d.length && !n.endsWith('/'));
-      const pick = files.find(([n]) => /\.(rom|mx1|mx2|bin)$/i.test(n)) ?? files.sort((a, b) => b[1].length - a[1].length)[0];
+      const pick = files.find(([n]) => /\.(rom|mx1|mx2|bin|cas)$/i.test(n)) ?? files.sort((a, b) => b[1].length - a[1].length)[0];
       if (!pick) throw new Error('no ROM inside the zip');
       [name, data] = pick;
     }
@@ -191,9 +192,17 @@ async function start(): Promise<void> {
     return { name: name.replace(/^.*\//, ''), data };
   };
 
+  const isTape = (name: string) => /\.cas$/i.test(name);
+
   const load = async (file: File, n: 1 | 2) => {
     try {
       const rom = await readRom(file);
+      if (isTape(rom.name)) {
+        insertTape(rom);
+        await shelve(rom);
+        void showShelf();
+        return;
+      }
       insert(n, rom);
       await shelve(rom);
       void showShelf();
@@ -244,7 +253,7 @@ async function start(): Promise<void> {
   const shelfList = $('shelf-list');
   /** Highlights the shelf entries that are in a slot. */
   function markShelf(): void {
-    const inSlots = msx.cartridges.map((c) => c?.name);
+    const inSlots = [...msx.cartridges.map((c) => c?.name), msx.tape?.name];
     for (const li of shelfList.children) {
       li.classList.toggle('inserted', inSlots.includes((li as HTMLElement).dataset.name));
     }
@@ -267,8 +276,12 @@ async function start(): Promise<void> {
         insert(n, cart);
         if (!running) await powerOn();
       };
-      button('shelf-cart', cart.name, `Insert ${cart.name} in slot 1`, () => void put(1));
-      button('shelf-slot', '2', 'Insert in slot 2', () => void put(2));
+      if (isTape(cart.name)) {
+        button('shelf-cart', cart.name, `Put the tape ${cart.name} in the tape deck`, () => insertTape(cart));
+      } else {
+        button('shelf-cart', cart.name, `Insert ${cart.name} in slot 1`, () => void put(1));
+        button('shelf-slot', '2', 'Insert in slot 2', () => void put(2));
+      }
       button('shelf-del', '×', 'Take it off the shelf', async () => {
         const yes = await askConfirm({
           title: 'Take it off the shelf?',
@@ -291,6 +304,81 @@ async function start(): Promise<void> {
       await shelve(stored); // cartridges from before the shelf existed
     }
   }
+  // ---- the tape deck -------------------------------------------------------
+
+  const tapeEl = $('tape');
+  const tapeFile = $<HTMLInputElement>('tape-file');
+  const tapeNote = $('tape-note');
+  const KIND_LABEL = { binary: 'machine code', basic: 'BASIC', ascii: 'BASIC text' } as const;
+  const showTapePos = () => {
+    const t = msx.tape;
+    $('tape-pos').textContent = t && t.length ? `${Math.round((t.pos / t.length) * 100)}%` : '';
+  };
+  function showTape(): void {
+    const t = msx.tape;
+    tapeEl.classList.toggle('full', Boolean(t));
+    const first = t?.first();
+    $('tape-label').textContent = !t
+      ? 'No tape: click or drop a .cas'
+      : first ? `${t.name} · ${first.name || 'no name'} (${KIND_LABEL[first.kind]})` : `${t.name} · blank`;
+    showTapePos();
+    markShelf();
+  }
+  function insertTape(stored: StoredCart | null, persist = true): void {
+    msx.tape = stored ? new Tape(stored.data, stored.name) : null;
+    if (persist) void saveTape(stored);
+    tapeNote.textContent = stored && settings.bios !== 'own'
+      ? 'Tapes load from MSX BASIC: pick your own BIOS under System ROM (C-BIOS has no BASIC).'
+      : '';
+    showTape();
+  }
+  msx.onTapeWritten = (t) => {
+    const stored = { name: t.name, data: t.data.slice() };
+    void saveTape(stored);
+    void shelve(stored).then(showShelf);
+    showTape();
+  };
+  $('tape-load').addEventListener('click', () => tapeFile.click());
+  tapeFile.addEventListener('change', () => {
+    const file = tapeFile.files?.[0];
+    tapeFile.value = '';
+    if (file) void load(file, 1);
+  });
+  $('tape-eject').addEventListener('click', () => insertTape(null));
+  $('tape-rewind').addEventListener('click', () => { msx.tape?.rewind(); showTapePos(); });
+  $('tape-blank').addEventListener('click', () => {
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+    insertTape({ name: `recording-${stamp}.cas`, data: new Uint8Array(0) });
+    tapeNote.textContent = 'Blank tape in. In BASIC: CSAVE"NAME", SAVE"CAS:NAME" or BSAVE"CAS:NAME",start,end. ⤓ downloads it.';
+  });
+  $('tape-save').addEventListener('click', () => {
+    const t = msx.tape;
+    if (!t) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([t.data.slice()], { type: 'application/octet-stream' }));
+    a.download = t.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $('tape-play').addEventListener('click', async () => {
+    const t = msx.tape;
+    const first = t?.first();
+    if (!t) return;
+    if (!first) { tapeNote.textContent = 'No MSX file found at the start of this tape.'; return; }
+    if (settings.bios !== 'own') {
+      tapeNote.textContent = 'Tapes load from MSX BASIC: pick your own BIOS under System ROM (C-BIOS has no BASIC).';
+      return;
+    }
+    const command = loadCommand(first.kind);
+    tapeNote.textContent = `Typing ${command.replace(/\r/g, ' ⏎ ').trim()}`;
+    if (running) msx.reset();
+    else await powerOn();
+    t.rewind();
+    msx.type(command);
+  });
+  const storedTape = await loadTape();
+  if (storedTape) insertTape(storedTape, false);
+
   await showShelf();
 
   // ---- the system ROM ------------------------------------------------------
@@ -310,6 +398,7 @@ async function start(): Promise<void> {
     save();
     msx.setBios(which === 'own' && ownBios ? { main: ownBios.data } : cbios);
     showBios();
+    if (which === 'own') tapeNote.textContent = '';
     if (running) await powerOn();
   };
   biosSel.addEventListener('change', () => void useBios(biosSel.value as 'cbios' | 'own'));
@@ -408,6 +497,7 @@ async function start(): Promise<void> {
       mhz.textContent = `${((f * REGIONS[msx.region].lines * CYCLES_PER_LINE) / 1e6).toFixed(2)} MHz`;
       statFrames = 0;
       statTime = now;
+      showTapePos();
     }
     caps.classList.toggle('on', msx.ppi.capsLamp);
   };

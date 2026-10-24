@@ -32,6 +32,10 @@ npm run build      # static site in dist/
 - *System ROM* swaps C-BIOS for a BIOS dump of your own (16K-64K, such as
   the Gradiente Expert's 32K ROM) to boot into MSX BASIC. It stays in your
   browser; Ok-Prompt never ships copyrighted ROMs.
+- Tapes (`.cas`) go in the tape deck under the slots. With your own BIOS,
+  *Load* resets the MSX and types `BLOAD"CAS:",R`, `CLOAD` or `RUN"CAS:"`
+  for you. *Blank* gives a tape to `CSAVE` on; download it with ⤓. Games
+  with their own turbo loaders do not load this way.
 - The bank-switching scheme of big cartridges is guessed from the code;
   change it under the cartridge if a game does not start.
 - The PC keyboard is the MSX keyboard: GRAPH is left Alt, CODE right Alt,
@@ -47,12 +51,13 @@ npm run build      # static site in dist/
 | AY-3-8910 | Three tones, noise, envelope, joystick port; rendered in step with CPU time |
 | PPI | Slot select, keyboard matrix, CAPS lamp, key click |
 | Cartridges | Plain ROMs up to 64K; Konami, Konami SCC, ASCII 8K and 16K MegaROMs |
+| Cassette | `.cas` tapes through the BIOS tape routines: load, record, download |
 | SCC | Konami's five-channel wave-table chip in SCC cartridges, mixed with the PSG |
 
 ## Next
 
 - Disk drives and MSX-DOS (which runs CP/M programs, like A-Prompt's).
-- Cassette images (`.cas`), expanded slots, MSX2 (V9938).
+- Expanded slots, MSX2 (V9938).
 - Save states, touch controls, a WebGL CRT shader.
 - A modem cartridge on A-Prompt's telnet relay, to call the same BBSes.
 

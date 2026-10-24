@@ -16,6 +16,8 @@ export interface StoredCart {
   name: string;
   data: Uint8Array;
   mapper?: string;
+  /** For an MSX2 BIOS: its SUB-ROM. */
+  sub?: Uint8Array;
 }
 
 function open(): Promise<IDBDatabase> {

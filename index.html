@@ -38,7 +38,9 @@
           </label>
           <label class="field">System ROM
             <select id="bios">
-              <option value="cbios">C-BIOS 0.29 (built in)</option>
+              <option value="cbios">C-BIOS MSX1 (built in)</option>
+              <option value="cbios2">C-BIOS MSX2 (built in)</option>
+              <option value="cbios2p">C-BIOS MSX2+ (built in)</option>
             </select>
           </label>
           <div class="btn-row">
@@ -46,8 +48,9 @@
             <button id="bios-remove" class="key-btn" type="button" hidden>Remove</button>
           </div>
           <p class="note" id="bios-note">C-BIOS starts cartridges only. For MSX BASIC, load dumps of your own
-            machines' ROMs (Gradiente Expert, Sharp Hotbit…, 32K each). They stay in this browser; pick one above.</p>
-          <input id="bios-file" type="file" accept=".rom,.bin,.zip" hidden />
+            machines' ROMs (Gradiente Expert, Sharp Hotbit…). An MSX2 needs its main ROM and SUB-ROM: pick both
+            files, or a zip. They stay in this browser; pick one above.</p>
+          <input id="bios-file" type="file" accept=".rom,.bin,.zip" multiple hidden />
           <dl class="readout">
             <dt>Frames</dt><dd id="fps">–</dd>
             <dt>CPU</dt><dd id="mhz">–</dd>

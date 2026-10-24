@@ -159,7 +159,7 @@ body {
 
 .screen-wrap {
   position: relative;
-  aspect-ratio: 288 / 224;
+  aspect-ratio: var(--screen-aspect, 288 / 224); /* MSX2 frames: 288 / 240 */
   border-radius: 14px / 18px;
   overflow: hidden;
   background: #000;

@@ -6,10 +6,15 @@ import './style.css';
 import { unzipSync } from 'fflate';
 import mainRomUrl from './roms/cbios_main_msx1.rom?url';
 import logoRomUrl from './roms/cbios_logo_msx1.rom?url';
+import main2RomUrl from './roms/cbios_main_msx2.rom?url';
+import logo2RomUrl from './roms/cbios_logo_msx2.rom?url';
+import main2pRomUrl from './roms/cbios_main_msx2+.rom?url';
+import logo2pRomUrl from './roms/cbios_logo_msx2+.rom?url';
+import subRomUrl from './roms/cbios_sub.rom?url';
 import modemRomUrl from './roms/okmodem.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { KeyInput, KeyTable, SPECIAL_KEYS } from './msx/keyboard';
-import { biosLabel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
+import { Bios, biosLabel, biosModel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
 import { asciiCas, loadCommand, Tape } from './msx/tape';
 import { MODEM_CART_NAME, ModemCartridge } from './msx/modem-cart';
 import { getDeepSeekKey, keyListeners, modemOptions, setDeepSeekKey } from './ui/modem-line';
@@ -38,7 +43,7 @@ interface Settings {
   humbar: boolean;
   volume: number;
   autoPower: boolean;
-  /** The system ROM: 'cbios' (built in) or the name of one of the player's own. */
+  /** The system ROM: 'cbios', 'cbios2', 'cbios2p' (built in) or the name of one of the player's own. */
   bios: string;
   /** Keys type the character on the PC key (through the BIOS's table), or stay where they are. */
   keymap: 'char' | 'position';
@@ -74,18 +79,46 @@ async function bytes(url: string): Promise<Uint8Array> {
 
 async function start(): Promise<void> {
   const [main, logo, modemRom] = await Promise.all([bytes(mainRomUrl), bytes(logoRomUrl), bytes(modemRomUrl)]);
-  const cbios = { main, logo };
+  const [main2, logo2, main2p, logo2p, sub] = await Promise.all(
+    [main2RomUrl, logo2RomUrl, main2pRomUrl, logo2pRomUrl, subRomUrl].map(bytes));
+  /** The built-in machines: C-BIOS MSX1, MSX2 and MSX2+. */
+  const BUILT_IN: Record<string, Bios> = {
+    cbios: { main, logo },
+    cbios2: { main: main2, logo: logo2, sub },
+    cbios2p: { main: main2p, logo: logo2p, sub },
+  };
+  const cbios = BUILT_IN.cbios;
   const msx = new Msx(cbios, SAMPLE_RATE);
   let biosList = await loadAllBios();
   if (settings.bios === 'own') settings.bios = biosList[0]?.name ?? 'cbios'; // the one BIOS of earlier versions
   /** The player's BIOS in use, or undefined for C-BIOS. */
   const ownBios = () => biosList.find((b) => b.name === settings.bios);
-  if (ownBios()) msx.setBios({ main: ownBios()!.data });
+  /** The BIOS in use, built in or own. */
+  const currentBios = (): Bios => {
+    const own = ownBios();
+    return own ? { main: own.data, sub: own.sub } : BUILT_IN[settings.bios] ?? cbios;
+  };
+  msx.setBios(currentBios());
+  // The MSX2 clock's memory (the BIOS's settings), kept as on a battery.
+  const RTC_KEY = 'ok-prompt.rtc';
+  try {
+    const saved = localStorage.getItem(RTC_KEY);
+    if (saved) msx.rtc.loadRam(Uint8Array.from(saved.match(/../g) ?? [], (h) => parseInt(h, 16)));
+  } catch {
+    /* no saved clock */
+  }
+  msx.rtc.onRamChange = (ram) => {
+    try {
+      localStorage.setItem(RTC_KEY, [...ram].map((b) => b.toString(16).padStart(2, '0')).join(''));
+    } catch {
+      /* storage blocked */
+    }
+  };
   const keys = new KeyInput(msx.ppi);
   keys.inject = (code) => msx.type(String.fromCharCode(code));
   /** Reads the key table of the BIOS in use (when typing by character). */
   const useKeyTable = () => {
-    const rom = ownBios()?.data ?? main;
+    const rom = currentBios().main;
     keys.table = settings.keymap === 'char' ? KeyTable.find(rom) : null;
     const note = document.getElementById('keymap-note');
     if (note) {
@@ -101,17 +134,30 @@ async function start(): Promise<void> {
   const wrap = $('screen-wrap');
   const canvas = $<HTMLCanvasElement>('screen');
   const g = canvas.getContext('2d')!;
-  const image = g.createImageData(WIDTH, HEIGHT);
-  const pixels = new Uint32Array(image.data.buffer);
+  let image = g.createImageData(WIDTH, HEIGHT);
+  let pixels = new Uint32Array(image.data.buffer);
   let running = false;
 
+  /** The canvas follows the video chip: 288x224 (MSX1) or 576x240 (MSX2). */
+  const fitCanvas = () => {
+    const { width, height } = msx.vdp;
+    if (canvas.width === width && canvas.height === height) return;
+    canvas.width = width;
+    canvas.height = height;
+    image = g.createImageData(width, height);
+    pixels = new Uint32Array(image.data.buffer);
+    // MSX2 frames are twice as wide in pixels for the same picture.
+    wrap.style.setProperty('--screen-aspect', `${width / (width > 400 ? 2 : 1)} / ${height}`);
+  };
   const draw = () => {
+    fitCanvas();
     pixels.set(msx.vdp.frame);
     g.putImageData(image, 0, 0);
   };
   const blank = () => {
+    fitCanvas();
     g.fillStyle = '#000';
-    g.fillRect(0, 0, WIDTH, HEIGHT);
+    g.fillRect(0, 0, canvas.width, canvas.height);
   };
   blank();
 
@@ -446,21 +492,35 @@ async function start(): Promise<void> {
   const biosFile = $<HTMLInputElement>('bios-file');
   const biosNote = $('bios-note');
   const biosNoteText = biosNote.textContent;
-  const label = (b: StoredCart) => biosLabel(b.data) ?? b.name.replace(/\.[a-z0-9]+$/i, '');
+  const label = (b: StoredCart) => {
+    const model = biosModel(b.data);
+    const name = biosLabel(b.data) ?? b.name.replace(/\.[a-z0-9]+$/i, '');
+    return model === 'msx1' ? name : `${name} (${model === 'msx2' ? 'MSX2' : 'MSX2+'})`;
+  };
+  /** On an MSX2 the BIOS sets 50 or 60 Hz in the VDP; the menu only drives an MSX1. */
+  const showRegion = () => {
+    const msx2 = msx.model !== 'msx1';
+    region.disabled = msx2;
+    region.title = msx2 ? 'An MSX2 BIOS sets 50 or 60 Hz itself (C-BIOS: 60 Hz)' : '';
+  };
   const showBios = () => {
-    while (biosSel.options.length > 1) biosSel.remove(1);
+    showRegion();
+    // The built-in machines stay; the player's own BIOSes are listed after them.
+    for (const o of [...biosSel.options]) if (o.dataset.own) o.remove();
     for (const b of biosList) {
       const o = new Option(label(b), b.name);
       o.title = b.name;
+      o.dataset.own = '1';
       biosSel.add(o);
     }
-    biosSel.value = ownBios() ? settings.bios : 'cbios';
+    biosSel.value = ownBios() || BUILT_IN[settings.bios] ? settings.bios : 'cbios';
     $('bios-remove').hidden = !ownBios();
   };
   const useBios = async (name: string) => {
-    settings.bios = biosList.some((b) => b.name === name) ? name : 'cbios';
+    settings.bios = biosList.some((b) => b.name === name) || BUILT_IN[name] ? name : 'cbios';
     save();
-    msx.setBios(ownBios() ? { main: ownBios()!.data } : cbios);
+    msx.setBios(currentBios());
+    blank();
     useKeyTable();
     showBios();
     if (ownBios()) tapeNote.textContent = '';
@@ -468,17 +528,50 @@ async function start(): Promise<void> {
   };
   biosSel.addEventListener('change', () => void useBios(biosSel.value));
   $('bios-load').addEventListener('click', () => biosFile.click());
+  /** Every ROM in the chosen files, zips opened. */
+  const readAll = async (files: File[]): Promise<{ name: string; data: Uint8Array }[]> => {
+    const out: { name: string; data: Uint8Array }[] = [];
+    for (const file of files) {
+      const data = new Uint8Array(await file.arrayBuffer());
+      if (/\.zip$/i.test(file.name)) {
+        for (const [n, d] of Object.entries(unzipSync(data))) if (d.length && !n.endsWith('/')) out.push({ name: n.replace(/^.*\//, ''), data: d });
+      } else {
+        out.push({ name: file.name, data });
+      }
+    }
+    return out;
+  };
+  /**
+   * A BIOS set from loose ROMs: the main ROM (DI at 0000h) and, for an
+   * MSX2, the SUB-ROM (16K starting "CD"), or one dump with both.
+   */
+  const biosSet = (roms: { name: string; data: Uint8Array }[]): StoredCart => {
+    const isSub = (d: Uint8Array) => d.length === 0x4000 && d[0] === 0x43 && d[1] === 0x44;
+    let mainRom = roms.find((r) => r.data.length >= 0x4000 && r.data.length <= 0x10000 && r.data[0] === 0xf3);
+    if (!mainRom) throw new Error('no MSX main ROM among them (it starts with DI, 16K to 64K)');
+    let subRom = roms.find((r) => isSub(r.data))?.data;
+    let mainData = mainRom.data;
+    if (!subRom && mainData.length >= 0xc000 && isSub(mainData.subarray(0x8000, 0xc000))) {
+      subRom = mainData.slice(0x8000, 0xc000); // one dump: main ROM then SUB-ROM
+      mainData = mainData.slice(0, 0x8000);
+    }
+    checkBios(mainData);
+    if (biosModel(mainData) !== 'msx1' && !subRom) {
+      throw new Error('an MSX2 BIOS needs its SUB-ROM too: choose both files, or a zip with both');
+    }
+    return { name: mainRom.name, data: mainData, ...(subRom ? { sub: subRom } : {}) };
+  };
   biosFile.addEventListener('change', async () => {
-    const file = biosFile.files?.[0];
+    const files = [...(biosFile.files ?? [])];
     biosFile.value = '';
-    if (!file) return;
+    if (!files.length) return;
+    const names = files.map((f) => f.name).join(', ');
     try {
-      const rom = await readRom(file, 0x10000, 'an MSX1 system ROM');
-      checkBios(rom.data);
+      const rom = biosSet(await readAll(files));
       // The same bytes under another name (Expert 1.1 and DD Plus share one ROM): use that one.
       const same = biosList.find((b) => b.data.length === rom.data.length && b.data.every((v, i) => v === rom.data[i]));
       if (same) {
-        biosNote.textContent = `${file.name} is the same ROM as ${label(same)}, already here.`;
+        biosNote.textContent = `${names} is the same ROM as ${label(same)}, already here.`;
         await useBios(same.name);
         return;
       }
@@ -487,7 +580,7 @@ async function start(): Promise<void> {
       biosNote.textContent = biosNoteText;
       await useBios(rom.name);
     } catch (e) {
-      biosNote.textContent = `Could not use ${file.name}: ${(e as Error).message}`;
+      biosNote.textContent = `Could not use ${names}: ${(e as Error).message}`;
     }
   });
   $('bios-remove').addEventListener('click', async () => {

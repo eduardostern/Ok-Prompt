@@ -27,11 +27,12 @@ import { Printer } from './printer';
 import { Psg } from './psg';
 import { MapperRam } from './mapper';
 import { Rtc } from './rtc';
-import { ExpandedSlot, Ram, Rom, Slots, EMPTY } from './slots';
+import { ExpandedSlot, Ram, Rom, Slots, EMPTY, type SlotDevice } from './slots';
 import { V9938 } from './v9938';
 import type { VideoChip } from './video';
 import { Tape } from './tape';
 import { musicRom } from './music-rom';
+import { Disk, DiskRomSlot, DSKCHG, DSKFMT, DSKIO, dpb, GETDPB, NOT_READY, RECORD_NOT_FOUND, SECTOR } from './disk';
 import { Ym2413 } from './ym2413';
 import { Vdp } from './vdp';
 
@@ -111,6 +112,12 @@ export class Msx {
   private bios!: Bios;
   /** MSX-MUSIC (the YM2413 and its ROM in slot 3-3), when switched on. */
   fm: Ym2413 | null = null;
+  /** The disk drive's ROM in slot 3-1, when there is one. */
+  private diskSlot: DiskRomSlot | null = null;
+  /** The disk in drive A. */
+  disk: Disk | null = null;
+  /** Called after the MSX wrote to the disk. */
+  onDiskWritten?: (disk: Disk) => void;
   readonly cartridges: (Cartridge | null)[] = [null, null];
   region: Region = 'ntsc';
   /** Frames run since power-on. */
@@ -175,21 +182,23 @@ export class Msx {
 
   /**
    * Slot 3. An MSX1 has its 64K there; MSX2s have C-BIOS's layout, slot 3
-   * expanded with the SUB-ROM in 3-0 and the mapper in 3-2. MSX-MUSIC goes
-   * in 3-3, and expands an MSX1's slot 3 too (the RAM in 3-0), as MSX1s
-   * with something built in did.
+   * expanded with the SUB-ROM in 3-0 and the mapper in 3-2. The disk ROM
+   * goes in 3-1 and MSX-MUSIC in 3-3; either expands an MSX1's slot 3 too
+   * (the RAM in 3-0), as MSX1s with something built in did.
    */
   private layoutSlot3(): void {
     const fm = this.fm ? new Rom().place(0x4000, musicRom()) : EMPTY;
+    const disk = this.diskSlot ?? EMPTY;
     if (this.model === 'msx1') {
-      if (!this.fm) {
+      if (!this.fm && !this.diskSlot) {
         this.slots.insert(3, this.ram);
         return;
       }
-      this.expanded = new ExpandedSlot().insert(0, this.ram).insert(3, fm);
+      this.expanded = new ExpandedSlot().insert(0, this.ram).insert(1, disk).insert(3, fm);
     } else {
       this.expanded = new ExpandedSlot()
         .insert(0, this.bios.sub ? new Rom().place(0x0000, this.bios.sub) : EMPTY)
+        .insert(1, disk)
         .insert(2, this.mapper)
         .insert(3, fm);
     }
@@ -206,6 +215,22 @@ export class Msx {
       this.fm = null;
     }
     this.layoutSlot3();
+  }
+
+  /** Puts a disk ROM (16K) in slot 3-1, or takes it out. Power-cycle to use it. */
+  setDiskRom(rom: Uint8Array | null): void {
+    this.diskSlot = rom ? new DiskRomSlot(rom) : null;
+    this.layoutSlot3();
+  }
+
+  get hasDiskDrive(): boolean {
+    return this.diskSlot !== null;
+  }
+
+  /** Puts a disk in the drive (null takes it out). */
+  insertDisk(disk: Disk | null): void {
+    this.disk = disk;
+    if (disk) disk.changed = true;
   }
 
   /** Plugs a cartridge into port 1 or 2 (null takes it out). Reset to use it. */
@@ -273,6 +298,7 @@ export class Msx {
         if (vdp.irq && cpu.interrupt()) continue;
         const pc = cpu.pc;
         if (((pc <= STMOTR && pc >= CHSNS) || this.keyBodies.includes(pc)) && this.trap(pc)) continue;
+        if (pc >= DSKIO && pc <= DSKFMT && this.diskSlot && this.diskTrap(pc)) continue;
         cpu.step();
       }
       if (line < shown) vdp.renderLine(line);
@@ -364,6 +390,98 @@ export class Msx {
     return true;
   }
 
+  /** Whether page 1 shows the disk ROM (slot 3-1). */
+  private diskRomShown(): boolean {
+    return this.slots.slotOf(1) === 3 && this.slots.devices[3] === this.expanded && this.expanded.subOf(1) === 1;
+  }
+
+  /**
+   * Memory as the disk routines' caller sees it, with RAM in page 1: the
+   * disk ROM is there while its routines run, so transfers to 4000h-7FFFh
+   * go to the RAM of page 3's slot (the RAM slot), as real disk ROMs do.
+   */
+  private callerWrite(addr: number, v: number): void {
+    if (addr >> 14 === 1) this.ramDevice().write(addr, v);
+    else this.slots.write(addr, v);
+  }
+
+  private callerRead(addr: number): number {
+    return addr >> 14 === 1 ? this.ramDevice().read(addr) : this.slots.read(addr);
+  }
+
+  private ramDevice(): SlotDevice {
+    const dev = this.slots.devices[this.slots.slotOf(3)];
+    return dev instanceof ExpandedSlot ? dev.subs[dev.subOf(3)] : dev;
+  }
+
+  /** The disk ROM's entries (disk.ts), done on the disk image. */
+  private diskTrap(pc: number): boolean {
+    if (!this.diskRomShown()) return false;
+    const cpu = this.cpu;
+    const disk = this.disk;
+    let error = -1;
+    const fillDpb = (base: number) => {
+      dpb(disk!.geometry()).forEach((b, i) => this.callerWrite((base + 1 + i) & 0xffff, b));
+    };
+    switch (pc) {
+      case DSKIO: {
+        if (!disk) { error = NOT_READY; break; }
+        const writing = (cpu.f & 1) !== 0;
+        let addr = (cpu.h << 8) | cpu.l;
+        let sector = (cpu.d << 8) | cpu.e;
+        while (cpu.b > 0) {
+          if (writing) {
+            const buf = new Uint8Array(SECTOR);
+            for (let i = 0; i < SECTOR; i++) buf[i] = this.callerRead((addr + i) & 0xffff);
+            if (!disk.write(sector, buf)) { error = RECORD_NOT_FOUND; break; }
+          } else {
+            const data = disk.read(sector);
+            if (!data) { error = RECORD_NOT_FOUND; break; }
+            for (let i = 0; i < SECTOR; i++) this.callerWrite((addr + i) & 0xffff, data[i]);
+          }
+          addr = (addr + SECTOR) & 0xffff;
+          sector++;
+          cpu.b--;
+          cpu.cycles += 2000; // a little time per sector, for loaders that wait
+        }
+        if (writing && disk.dirty) this.onDiskWritten?.(disk);
+        break;
+      }
+      case DSKCHG:
+        if (!disk) { error = NOT_READY; break; }
+        if (disk.changed) {
+          disk.changed = false;
+          cpu.b = 0xff;
+          fillDpb((cpu.h << 8) | cpu.l);
+        } else {
+          cpu.b = 1;
+        }
+        break;
+      case GETDPB:
+        if (!disk) { error = NOT_READY; break; }
+        fillDpb((cpu.h << 8) | cpu.l);
+        break;
+      case DSKFMT:
+        if (!disk) { error = NOT_READY; break; }
+        disk.format();
+        disk.changed = true;
+        this.onDiskWritten?.(disk);
+        break;
+      default:
+        return false;
+    }
+    if (error >= 0) {
+      cpu.a = error;
+      cpu.f |= 0x01;
+    } else {
+      cpu.f &= ~0x01;
+    }
+    cpu.pc = this.slots.read(cpu.sp) | (this.slots.read((cpu.sp + 1) & 0xffff) << 8);
+    cpu.sp = (cpu.sp + 2) & 0xffff;
+    cpu.cycles += 50;
+    return true;
+  }
+
   /** The frame's sound: the PSG with any cartridge's SCC and MSX-MUSIC mixed in. */
   takeAudio(): Float32Array<ArrayBuffer> {
     const out = this.psg.take();
@@ -380,6 +498,8 @@ export class Msx {
       case 0xa8: case 0xa9: case 0xaa: case 0xab: return this.ppi.in(port);
       case 0x90: return this.printer.status();
     }
+    // A Brazilian (Microsol) disk ROM's controller: idle, not busy.
+    if (this.diskSlot && port >= 0xd0 && port <= 0xd4) return port === 0xd0 ? 0x04 : port === 0xd4 ? 0x80 : 0x00;
     if (this.model !== 'msx1') {
       if (port >= 0xfc) return this.mapper.getPage(port - 0xfc);
       if (port === 0xb5) return this.rtc.read();

@@ -386,7 +386,9 @@ body {
 }
 .tape-keys button:hover { border-color: var(--accent); }
 .tape-keys .eject { grid-row: auto; grid-column: auto; }
-.tape:not(.full) .tape-keys button:not(#tape-blank), .tape.full #tape-blank { display: none; }
+.tape:not(.full) .tape-keys button:not(#tape-blank):not(#disk-blank), .tape.full #tape-blank, .tape.full #disk-blank { display: none; }
+.disk[hidden] { display: none; }
+.disk-led { color: var(--red); }
 .tape-note { grid-column: 2 / -1; }
 .tape-note:empty { display: none; }
 @media (max-width: 560px) {

@@ -25,7 +25,11 @@ import { askConfirm } from './ui/confirm';
 import { waitForPower, warmUp } from './ui/power';
 import { SoundOut } from './ui/sound-out';
 import { MsxKeyboard } from './ui/msx-keyboard';
-import { loadAllBios, loadCart, loadShelf, loadTape, removeBios, saveBios, saveCart, saveTape, shelve, StoredCart, unshelve } from './ui/store';
+import {
+  loadAllBios, loadAllDiskRoms, loadCart, loadDisk, loadShelf, loadTape, removeBios, removeDiskRom, saveBios, saveCart,
+  saveDisk, saveDiskRom, saveTape, shelve, StoredCart, unshelve,
+} from './ui/store';
+import { blankDisk, Disk, diskRomIn, SECTOR } from './msx/disk';
 
 const SAMPLE_RATE = 44100;
 const MAX_ROM = 4 * 1024 * 1024;
@@ -51,6 +55,8 @@ interface Settings {
   keymap: 'char' | 'position';
   /** The on-screen keyboard is open. */
   keyboard: boolean;
+  /** The disk ROM in use ('' for no disk drive): the name of one of the player's own. */
+  diskRom: string;
   /** MSX-MUSIC (the YM2413 FM chip) is in the machine. */
   fm: boolean;
 }
@@ -59,6 +65,7 @@ const DEFAULTS: Settings = {
   region: 'ntsc', speed: 1, smooth: false, scanlines: true, curve: true,
   flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios', keymap: 'char', keyboard: false,
   fm: true,
+  diskRom: '',
 };
 
 function loadSettings(): Settings {
@@ -316,7 +323,7 @@ async function start(): Promise<void> {
     let name = file.name;
     if (/\.zip$/i.test(name)) {
       const files = Object.entries(unzipSync(data)).filter(([n, d]) => d.length && !n.endsWith('/'));
-      const pick = files.find(([n]) => /\.(rom|mx1|mx2|bin|cas|tsx)$/i.test(n)) ?? files.sort((a, b) => b[1].length - a[1].length)[0];
+      const pick = files.find(([n]) => /\.(rom|mx1|mx2|bin|cas|tsx|dsk|di1|di2)$/i.test(n)) ?? files.sort((a, b) => b[1].length - a[1].length)[0];
       if (!pick) throw new Error('no ROM inside the zip');
       [name, data] = pick;
     }
@@ -327,10 +334,18 @@ async function start(): Promise<void> {
   };
 
   const isTape = (name: string) => /\.(cas|tsx)$/i.test(name);
+  const isDisk = (name: string) => /\.(dsk|di1|di2)$/i.test(name);
 
   const load = async (file: File, n: 1 | 2) => {
     try {
       const rom = await readRom(file);
+      if (isDisk(rom.name)) {
+        insertDiskFile(rom);
+        await shelve(rom);
+        void showShelf();
+        if (!msx.hasDiskDrive) alertSlot(n, 'The disk is in the drive, but the MSX has no disk drive yet: load a disk ROM under Machine.');
+        return;
+      }
       if (isTape(rom.name)) {
         insertTape(rom);
         await shelve(rom);
@@ -387,7 +402,7 @@ async function start(): Promise<void> {
   const shelfList = $('shelf-list');
   /** Highlights the shelf entries that are in a slot. */
   function markShelf(): void {
-    const inSlots = [...msx.cartridges.map((c) => c?.name), msx.tape?.name];
+    const inSlots = [...msx.cartridges.map((c) => c?.name), msx.tape?.name, msx.disk?.name];
     for (const li of shelfList.children) {
       li.classList.toggle('inserted', inSlots.includes((li as HTMLElement).dataset.name));
     }
@@ -418,6 +433,8 @@ async function start(): Promise<void> {
       }
       if (isTape(cart.name)) {
         button('shelf-cart', cart.name, `Put the tape ${cart.name} in the tape deck`, () => insertTape(cart));
+      } else if (isDisk(cart.name)) {
+        button('shelf-cart', cart.name, `Put the disk ${cart.name} in the drive`, () => insertDiskFile(cart));
       } else {
         button('shelf-cart', cart.name, `Insert ${cart.name} in slot 1`, () => void put(1));
         button('shelf-slot', '2', 'Insert in slot 2', () => void put(2));
@@ -633,9 +650,122 @@ async function start(): Promise<void> {
   });
   showBios();
 
+  // ---- the disk drive ------------------------------------------------------
+
+  let diskRoms = await loadAllDiskRoms();
+  const diskSel = $<HTMLSelectElement>('diskrom');
+  const diskRomFile = $<HTMLInputElement>('diskrom-file');
+  const diskNote = $('diskrom-note');
+  const diskNoteText = diskNote.textContent ?? '';
+  const diskEl = $('disk');
+  const diskFile = $<HTMLInputElement>('disk-file');
+  const ownDiskRom = () => diskRoms.find((r) => r.name === settings.diskRom);
+  const showDiskRoms = () => {
+    for (const o of [...diskSel.options]) if (o.value) o.remove();
+    for (const r of diskRoms) diskSel.add(new Option(r.name, r.name));
+    diskSel.value = ownDiskRom() ? settings.diskRom : '';
+    $('diskrom-remove').hidden = !ownDiskRom();
+    diskEl.hidden = !ownDiskRom();
+  };
+  const useDiskRom = (name: string) => {
+    settings.diskRom = diskRoms.some((r) => r.name === name) ? name : '';
+    save();
+    msx.setDiskRom(ownDiskRom()?.data ?? null);
+    showDiskRoms();
+    if (running) msx.powerCycle();
+  };
+  diskSel.addEventListener('change', () => useDiskRom(diskSel.value));
+  $('diskrom-load').addEventListener('click', () => diskRomFile.click());
+  diskRomFile.addEventListener('change', async () => {
+    const file = diskRomFile.files?.[0];
+    diskRomFile.value = '';
+    if (!file) return;
+    try {
+      let rom: Uint8Array | null = null;
+      let name = file.name;
+      for (const r of await readAll([file])) {
+        rom = diskRomIn(r.data);
+        if (rom) { name = r.name; break; }
+      }
+      if (!rom) throw new Error('no disk ROM in it ("AB" and the jump table at 4010h, 16K)');
+      const stored = { name, data: rom };
+      await saveDiskRom(stored);
+      diskRoms = [...diskRoms.filter((r) => r.name !== name), stored].sort((a, b) => a.name.localeCompare(b.name));
+      diskNote.textContent = diskNoteText;
+      useDiskRom(name);
+    } catch (e) {
+      diskNote.textContent = `Could not use ${file.name}: ${(e as Error).message}`;
+    }
+  });
+  $('diskrom-remove').addEventListener('click', async () => {
+    const r = ownDiskRom();
+    if (!r) return;
+    const yes = await askConfirm({
+      title: 'Remove this disk ROM?',
+      message: `${r.name} will be forgotten by this browser and the MSX has no disk drive.`,
+      ok: 'Remove',
+    });
+    if (!yes) return;
+    await removeDiskRom(r.name);
+    diskRoms = diskRoms.filter((x) => x !== r);
+    useDiskRom('');
+  });
+  msx.setDiskRom(ownDiskRom()?.data ?? null);
+  showDiskRoms();
+
+  function showDisk(): void {
+    const d = msx.disk;
+    diskEl.classList.toggle('full', Boolean(d));
+    $('disk-label').textContent = d ? `${d.name} · ${Math.round(d.data.length / 1024)}K` : 'No disk: click or drop a .dsk';
+    markShelf();
+  }
+  function insertDiskFile(stored: StoredCart | null, persist = true): void {
+    msx.insertDisk(stored ? new Disk(stored.data, stored.name) : null);
+    if (persist) void saveDisk(stored);
+    showDisk();
+  }
+  // Written disks are kept, a moment after the last write.
+  let diskSaveTimer = 0;
+  msx.onDiskWritten = (d) => {
+    clearTimeout(diskSaveTimer);
+    diskSaveTimer = window.setTimeout(() => {
+      d.dirty = false;
+      const stored = { name: d.name, data: d.data.slice() };
+      void saveDisk(stored);
+      void shelve(stored).then(showShelf);
+    }, 500);
+  };
+  $('disk-load').addEventListener('click', () => diskFile.click());
+  diskFile.addEventListener('change', async () => {
+    const file = diskFile.files?.[0];
+    diskFile.value = '';
+    if (!file) return;
+    try {
+      const d = await readRom(file, 2 * 1024 * 1024, 'a disk');
+      if (d.data.length % SECTOR) throw new Error('not a disk image (not whole 512-byte sectors)');
+      insertDiskFile(d);
+      await shelve(d);
+      void showShelf();
+    } catch (e) {
+      diskNote.textContent = `Could not load ${file.name}: ${(e as Error).message}`;
+    }
+  });
+  $('disk-blank').addEventListener('click', () => {
+    const stamp = new Date().toISOString().slice(0, 16).replace(/\D/g, '');
+    insertDiskFile({ name: `disk-${stamp}.dsk`, data: blankDisk() });
+  });
+  $('disk-save').addEventListener('click', () => {
+    const d = msx.disk;
+    if (d) download(d.name, d.data);
+  });
+  $('disk-eject').addEventListener('click', () => insertDiskFile(null));
+  const storedDisk = await loadDisk();
+  if (storedDisk) insertDiskFile(storedDisk, false);
+  showDisk();
+
   // ---- keyboard and gamepad ------------------------------------------------
 
-  const typing = (e: Event) => (e.target as HTMLElement | null)?.closest('input, select, textarea, dialog');
+  const typing = (e: Event) => (e.target as Partial<Element> | null)?.closest?.('input, select, textarea, dialog');
   window.addEventListener('keydown', (e) => {
     if (!running || typing(e) || e.metaKey) return;
     if (keys.down(e.code, e.key, e.ctrlKey, e.altKey)) e.preventDefault();

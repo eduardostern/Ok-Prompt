@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { KeyInput, KeyTable, msxText } from '../src/msx/keyboard';
 import { printedText } from '../src/msx/printer';
+import { blankDisk, Disk, diskRomIn } from '../src/msx/disk';
 import { biosLabel, checkBios, Msx } from '../src/msx/machine';
 import { asciiCas, Tape } from '../src/msx/tape';
 import { ModemCartridge } from '../src/msx/modem-cart';
@@ -155,6 +156,25 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
     const plain = free(false);
     expect(plain).toBeTruthy();
     expect(free(true)).toBe(plain);
+  });
+});
+
+// With a disk ROM dump too (MSX_DISKROM=~/path), Disk BASIC on a blank disk.
+const diskPath = process.env.MSX_DISKROM?.replace(/^~/, process.env.HOME ?? '~');
+describe.skipIf(!path || !diskPath)('a real BIOS with a real disk ROM (MSX_DISKROM)', () => {
+  it('boots Disk BASIC, saves a program to the disk and lists it with FILES', () => {
+    const rom = diskRomIn(new Uint8Array(readFileSync(diskPath!)));
+    expect(rom).not.toBeNull();
+    const m = new Msx({ main });
+    m.setDiskRom(rom);
+    const disk = new Disk(blankDisk(), 'test.dsk');
+    m.insertDisk(disk);
+    m.powerCycle();
+    frames(m, 600);
+    m.type('10 PRINT "OI DO DISCO"\rSAVE "OIDISCO"\rFILES\r');
+    frames(m, 300);
+    expect(screen(m)).toMatch(/OIDISCO/);
+    expect(disk.dirty || disk.data.some((b, i) => i >= 7 * 512 && i < 14 * 512 && b !== 0)).toBe(true);
   });
 });
 

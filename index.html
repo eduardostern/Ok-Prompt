@@ -51,6 +51,19 @@
             machines' ROMs (Gradiente Expert, Sharp Hotbit…). An MSX2 needs its main ROM and SUB-ROM: pick both
             files, or a zip. They stay in this browser; pick one above.</p>
           <input id="bios-file" type="file" accept=".rom,.bin,.zip" multiple hidden />
+          <label class="field">Disk drive
+            <select id="diskrom">
+              <option value="">None</option>
+            </select>
+          </label>
+          <div class="btn-row">
+            <button id="diskrom-load" class="key-btn" type="button">Load disk ROM…</button>
+            <button id="diskrom-remove" class="key-btn" type="button" hidden>Remove</button>
+          </div>
+          <p class="note" id="diskrom-note">A disk drive needs the disk ROM of a real one (Philips, Sony, Panasonic,
+            Brazilian…), 16K, from your own machine; it stays in this browser. With it, an MSX with MSX BASIC
+            boots Disk BASIC or MSX-DOS from the disk.</p>
+          <input id="diskrom-file" type="file" accept=".rom,.bin,.zip" hidden />
           <dl class="readout">
             <dt>Frames</dt><dd id="fps">–</dd>
             <dt>CPU</dt><dd id="mhz">–</dd>
@@ -106,7 +119,20 @@
               </div>
               <p class="note tape-note" id="tape-note"></p>
             </div>
-            <input id="rom-file" type="file" accept=".rom,.mx1,.mx2,.bin,.cas,.tsx,.zip" hidden />
+            <div class="tape disk" id="disk" hidden>
+              <span class="slot-no" aria-hidden="true">💾</span>
+              <button class="cart" type="button" id="disk-load" title="Insert a disk (.dsk or .zip)">
+                <span class="cart-label" id="disk-label">No disk: click or drop a .dsk</span>
+              </button>
+              <span class="tape-pos" id="disk-led"></span>
+              <div class="tape-keys">
+                <button type="button" id="disk-save" title="Download the disk (with what was written on it)">⤓</button>
+                <button type="button" id="disk-blank" title="Insert a blank 720K disk">＋ Blank</button>
+                <button type="button" class="eject" id="disk-eject" title="Eject">⏏</button>
+              </div>
+            </div>
+            <input id="rom-file" type="file" accept=".rom,.mx1,.mx2,.bin,.cas,.tsx,.dsk,.zip" hidden />
+            <input id="disk-file" type="file" accept=".dsk,.di1,.di2,.zip" hidden />
             <input id="tape-file" type="file" accept=".cas,.tsx,.zip" hidden />
           </div>
 

@@ -6,6 +6,8 @@
  *   "shelf:<name>"  every cartridge ever loaded, to pick again later
  *   "bios:<name>"   the player's own system ROMs (C-BIOS needs no entry)
  *   "tape"          the cassette in the tape deck, with what was recorded
+ *   "diskrom:<name>" the player's own disk ROMs
+ *   "disk"          the disk in the drive, with what was written
  */
 
 const DB = 'ok-prompt';
@@ -71,3 +73,14 @@ export const loadShelf = async (): Promise<StoredCart[]> => {
   const all = await run<StoredCart[]>('readonly', (s) => s.getAll(IDBKeyRange.bound(SHELF, SHELF + '￿')));
   return (all ?? []).sort((a, b) => a.name.localeCompare(b.name));
 };
+
+const DISKROM = 'diskrom:';
+export const saveDiskRom = (rom: StoredCart) => put(DISKROM + rom.name, rom);
+export const removeDiskRom = (name: string) => put(DISKROM + name, null);
+export const loadAllDiskRoms = async (): Promise<StoredCart[]> => {
+  const all = await run<StoredCart[]>('readonly', (s) => s.getAll(IDBKeyRange.bound(DISKROM, DISKROM + '\uffff')));
+  return (all ?? []).sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const saveDisk = (disk: StoredCart | null) => put('disk', disk);
+export const loadDisk = () => run<StoredCart>('readonly', (s) => s.get('disk'));

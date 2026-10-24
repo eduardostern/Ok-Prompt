@@ -133,6 +133,11 @@ export class KeyTable {
     return null;
   }
 
+  /** The code of `ch` in this BIOS's character set, whether or not a key gives it; -1 if none. */
+  charCode(ch: string): number {
+    return msxCodes(ch, this.charset)[0] ?? -1;
+  }
+
   /** The code this BIOS types for `ch`, or -1 if no key gives it. */
   codeFor(ch: string): number {
     return msxCodes(ch, this.charset).find((c) => this.byCode.has(c)) ?? -1;
@@ -150,14 +155,18 @@ const CODE: [number, number] = [6, 4];
 
 /**
  * The PC keyboard driving the MSX matrix. Keys that type a character other
- * than a letter go through the BIOS's key table (when `table` is set);
- * letters, digits' positions for games, arrows, Enter, function keys and the
- * modifiers keep their places in the matrix, so games and the MSX's own
- * SHIFT and CAPS behave as on the real machine.
+ * than a plain letter go through the BIOS's key table (when `table` is set);
+ * plain letters, arrows, Enter, function keys and the modifiers keep their
+ * places in the matrix, so games and the MSX's own SHIFT and CAPS behave as
+ * on the real machine. A character no key gives at once (the Hotbit types
+ * accents with dead keys) goes to `inject`, which puts it in the BIOS key
+ * buffer.
  */
 export class KeyInput {
   /** The BIOS's key table; null types by position only. */
   table: KeyTable | null = null;
+  /** Types one MSX character code without keys (the machine's key buffer). */
+  inject: ((code: number) => void) | null = null;
   private held = new Map<string, Combo | [number, number]>();
   /** PC modifier keys down, as the MSX should see them without a character key. */
   private phys = { shift: 0, graph: 0, code: 0 };
@@ -170,9 +179,17 @@ export class KeyInput {
   down(code: string, key: string, ctrl = false, alt = false): boolean {
     if (this.held.has(code)) return true; // auto-repeat: the MSX repeats by itself
     if (key === 'Dead') return true; // the accent comes with the next key
-    const combo = this.table && !ctrl && !alt && !/^Key[A-Z]$/.test(code) && !code.startsWith('Numpad')
-      ? this.table.lookup(key) : null;
-    if (combo && key !== ' ') {
+    const byChar = this.table && !ctrl && !alt && key.length === 1 && key !== ' '
+      && !/^[a-zA-Z]$/.test(key) && !code.startsWith('Numpad');
+    const combo = byChar ? this.table!.lookup(key) : null;
+    if (byChar && !combo && this.inject) {
+      const c = this.table!.charCode(key);
+      if (c >= 0) {
+        this.inject(c);
+        return true; // nothing held: the character is already typed
+      }
+    }
+    if (combo) {
       this.held.set(code, combo);
       this.ppi.key(combo.row, combo.bit, true);
       this.active = combo;

@@ -48,21 +48,29 @@ describe.skipIf(!path)('a real MSX BIOS (MSX_BIOS)', () => {
     const keys = new KeyInput(m.ppi);
     keys.table = KeyTable.find(main);
     expect(keys.table).not.toBeNull();
+    keys.inject = (code) => m.type(String.fromCharCode(code));
     const tap = (code: string, key: string) => { keys.down(code, key); frames(m, 3); keys.up(code); frames(m, 3); };
+    // The Hotbit's BIOS turns CAPS on at power-up (and its CAPS capitalises ç too).
+    if (m.ppi.capsLamp) tap('CapsLock', 'CapsLock');
+    expect(m.ppi.capsLamp).toBe(false);
     // As a Brazilian PC keyboard sends them: letters by position, the rest by character.
     for (const ch of 'PRINT "') {
       if (ch === ' ') tap('Space', ' ');
       else if (/[A-Z]/.test(ch)) { keys.down('ShiftLeft', 'Shift'); tap(`Key${ch}`, ch); keys.up('ShiftLeft'); }
       else tap('Digit1', ch); // whatever PC key: the character decides
     }
-    for (const ch of 'çãé@^:;?/[]') tap('Semicolon', ch);
+    // Accented letters come from the letter's own PC key, as after a dead key.
+    const typed: [string, string][] = [['Semicolon', 'ç'], ['KeyA', 'ã'], ['KeyE', 'é'], ['KeyO', 'õ'],
+      ...[...'@^:;?/[]'].map((ch): [string, string] => ['Quote', ch])];
+    for (const [code, ch] of typed) tap(code, ch);
     tap('Digit1', '"');
     tap('Enter', '\r');
     frames(m, 30);
     const shown = screen(m);
-    // The MSX echoes the line and prints it, in this BIOS's character set.
-    const out = String.fromCharCode(...[...'çãé@^:;?/[]'].map((ch) => keys.table!.codeFor(ch)));
-    expect(out).not.toContain(String.fromCharCode(0xffff)); // every character has a key
+    // The MSX echoes the line and prints it, in this BIOS's character set:
+    // through its keys, or straight into the key buffer if no key gives it.
+    const out = String.fromCharCode(...typed.map(([, ch]) => keys.table!.charCode(ch)));
+    expect(out).not.toContain(String.fromCharCode(0xffff)); // every character exists
     expect(shown).toContain('PRINT "' + out + '"');
     expect(shown.split('\n').map((l) => l.trim())).toContain(out);
   });

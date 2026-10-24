@@ -76,6 +76,7 @@ async function start(): Promise<void> {
   let ownBios = await loadBios();
   if (settings.bios === 'own' && ownBios) msx.setBios({ main: ownBios.data });
   const keys = new KeyInput(msx.ppi);
+  keys.inject = (code) => msx.type(String.fromCharCode(code));
   /** Reads the key table of the BIOS in use (when typing by character). */
   const useKeyTable = () => {
     const rom = settings.bios === 'own' && ownBios ? ownBios.data : main;

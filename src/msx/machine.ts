@@ -116,6 +116,8 @@ export class Msx {
   private diskSlot: DiskRomSlot | null = null;
   /** The disk in drive A. */
   disk: Disk | null = null;
+  /** CPU cycles of the frames before this one (cycle counts restart each frame). */
+  private cycleBase = 0;
   /** Called after the MSX wrote to the disk. */
   onDiskWritten?: (disk: Disk) => void;
   readonly cartridges: (Cartridge | null)[] = [null, null];
@@ -151,6 +153,7 @@ export class Msx {
     cpu.portIn = (p) => this.portIn(p & 0xff);
     cpu.portOut = (p, v) => this.portOut(p & 0xff, v);
     this.ppi.onMotor = () => this.tape?.advance(this.cpu.cycles, this.ppi.motor);
+    this.psg.clock = () => this.cycleBase + this.cpu.cycles;
     // The cassette input follows the tape only while its motor runs.
     this.psg.tapeIn = () => (this.tape && this.ppi.motor ? this.tape.level(this.cpu.cycles, true) : 0);
     this.ppi.onClick = (level) => {
@@ -312,6 +315,7 @@ export class Msx {
     this.tape?.rebase(end);
     // Keep the counters small: the next frame starts at cycle 0 (plus overrun).
     cpu.cycles -= end;
+    this.cycleBase += end;
     this.psg.rebase(end);
     for (const c of this.cartridges) c?.scc?.rebase(end);
     this.fm?.rebase(end);

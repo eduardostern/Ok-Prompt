@@ -15,6 +15,7 @@ import modemRomUrl from './roms/okmodem.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { detectCharset, KeyInput, KeyTable, msxChar, msxText, SPECIAL_KEYS } from './msx/keyboard';
 import { printedText } from './msx/printer';
+import { Mouse } from './msx/mouse';
 import { Bios, biosLabel, biosModel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
 import { asciiCas, isTsx, loadCommand, Tape } from './msx/tape';
 import { MODEM_CART_NAME, ModemCartridge } from './msx/modem-cart';
@@ -59,6 +60,8 @@ interface Settings {
   diskRom: string;
   /** MSX-MUSIC (the YM2413 FM chip) is in the machine. */
   fm: boolean;
+  /** What is in joystick port 1. */
+  port1: 'joystick' | 'mouse';
 }
 
 const DEFAULTS: Settings = {
@@ -66,6 +69,7 @@ const DEFAULTS: Settings = {
   flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios', keymap: 'char', keyboard: false,
   fm: true,
   diskRom: '',
+  port1: 'joystick',
 };
 
 function loadSettings(): Settings {
@@ -823,6 +827,38 @@ async function start(): Promise<void> {
   msx.printer.onPrint = () => { printShown = -1; };
   $('printer-clear').addEventListener('click', () => { msx.printer.clear(); showPrinter(); });
   $('printer-save').addEventListener('click', () => download('printout.txt', new TextEncoder().encode(printed())));
+  // ---- the mouse ---------------------------------------------------------------
+
+  const mouse = new Mouse();
+  const port1 = $<HTMLSelectElement>('port1');
+  const usePort1 = () => {
+    msx.psg.mice[0] = settings.port1 === 'mouse' ? mouse : null;
+    port1.value = settings.port1;
+    $('mouse-note').hidden = settings.port1 !== 'mouse';
+    if (settings.port1 !== 'mouse' && document.pointerLockElement) document.exitPointerLock();
+  };
+  port1.addEventListener('change', () => { settings.port1 = port1.value as Settings['port1']; save(); usePort1(); });
+  usePort1();
+  const locked = () => document.pointerLockElement === canvas;
+  canvas.addEventListener('click', () => {
+    if (settings.port1 === 'mouse' && running && !locked()) void canvas.requestPointerLock();
+  });
+  // The MSX screen is 256 dots across; the mouse counts about one per dot.
+  const mouseScale = () => 256 / Math.max(1, canvas.getBoundingClientRect().width);
+  document.addEventListener('mousemove', (e) => {
+    if (locked()) mouse.move(e.movementX * mouseScale(), e.movementY * mouseScale());
+  });
+  const mouseButton = (e: MouseEvent, down: boolean) => {
+    if (!locked()) return;
+    const bit = e.button === 0 ? 1 : e.button === 2 ? 2 : 0;
+    mouse.buttons = down ? mouse.buttons | bit : mouse.buttons & ~bit;
+    e.preventDefault();
+  };
+  document.addEventListener('mousedown', (e) => mouseButton(e, true));
+  document.addEventListener('mouseup', (e) => mouseButton(e, false));
+  document.addEventListener('pointerlockchange', () => { if (!locked()) mouse.buttons = 0; });
+  canvas.addEventListener('contextmenu', (e) => { if (locked()) e.preventDefault(); });
+
   const kbdToggle = $('kbd-toggle');
   const showKbd = () => {
     $('kbd').hidden = !settings.keyboard;

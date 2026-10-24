@@ -20,6 +20,8 @@ const LEVEL = [
   0.1691, 0.2647, 0.3527, 0.4499, 0.5704, 0.6873, 0.8482, 1,
 ];
 
+import type { Mouse } from './mouse';
+
 export class Psg {
   readonly regs = new Uint8Array(16);
   private selected = 0;
@@ -30,6 +32,10 @@ export class Psg {
   click = 0;
   /** The cassette input (R14 bit 7): the tape's level now. */
   tapeIn?: () => number;
+  /** A mouse in joystick port 1 or 2, instead of the joystick. */
+  mice: (Mouse | null)[] = [null, null];
+  /** CPU cycles since power-on, for the mouse's timing. */
+  clock: () => number = () => 0;
 
   private toneCount = [0, 0, 0];
   private toneOut = [0, 0, 0];
@@ -73,6 +79,10 @@ export class Psg {
     this.advanceTo(cycles);
     const r = this.selected;
     this.regs[r] = value & 0xff;
+    if (r === 15) {
+      // Pin 8 of each port: the mouse's strobe.
+      for (let p = 0; p < 2; p++) this.mice[p]?.strobe((value >> (4 + p)) & 1, this.clock());
+    }
     if (r === 13) {
       // A new shape restarts the envelope.
       this.envStep = 0;
@@ -86,7 +96,8 @@ export class Psg {
     if (r === 14) {
       // Port A: joystick 1 or 2 (picked by port B bit 6), keyboard layout
       // bit 6 = 1 (international), cassette input bit 7.
-      const stick = this.joystick[(this.regs[15] >> 6) & 1];
+      const port = (this.regs[15] >> 6) & 1;
+      const stick = this.mice[port]?.read() ?? this.joystick[port];
       return (this.tapeIn?.() ? 0x80 : 0) | 0x40 | (stick & 0x3f);
     }
     return this.regs[r];

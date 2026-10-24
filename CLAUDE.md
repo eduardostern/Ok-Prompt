@@ -16,7 +16,8 @@ npm run okmodem                  # reassemble src/roms/okmodem.asm into okmodem.
 npx tsc -p worker                # typecheck the relay Worker (npm run build runs it)
 ZEX=1 npx vitest run tests/zex.test.ts   # zexdoc + zexall, ~2.5 min
 MSX_BIOS=~/Downloads/expert_1.1_basic-bios1.rom npx vitest run tests/real-bios.test.ts
-                                 # MSX BASIC from a real BIOS dump (never in the repo)
+                                 # MSX BASIC from a real BIOS dump (never in the repo);
+                                 # add MSX_DISKROM=<disk ROM dump> for the Disk BASIC test
 ```
 
 Run `npx tsc --noEmit` and `npm test` before every commit. Rerun the zex
@@ -42,7 +43,11 @@ exerciser after any change to `src/z80.ts`.
 | `src/msx/mapper.ts`, `rtc.ts` | MSX2 memory mapper (ports FCh-FFh) and RP5C01 clock (B4h/B5h); `ExpandedSlot` is in slots.ts |
 | `src/msx/psg.ts` | AY-3-8910, `advanceTo(cycles)`, joystick on R14 |
 | `src/msx/scc.ts` | Konami SCC wave chip, owned by `konamiscc` cartridges, mixed in `Msx.takeAudio()` |
-| `src/msx/tape.ts` | `.cas` images: block markers, read/write, first file's kind and load command; `.tsx` to `.cas` (`tsxToCas`) |
+| `src/msx/tape.ts`, `tape-signal.ts` | `.cas`/`.tsx` tapes: block markers, read/write for the BIOS traps, first file's kind and load command; the pulse timeline played on the cassette input |
+| `src/msx/disk.ts` | `.dsk` images, the disk ROM's slot (idle Philips FDC), DPBs, blank disks; the machine traps the ROM's jump table |
+| `src/msx/ym2413.ts`, `music-rom.ts` | MSX-MUSIC: emu2413 port (MIT) on 7Ch/7Dh; our ROM with "APRLOPLL" for slot 3-3 |
+| `src/msx/printer.ts`, `mouse.ts` | Printer port 90h/91h; the MSX mouse on a joystick port |
+| `src/msx/state.ts` | Save states: `grab`/`put` copy each chip's plain data; `Msx.saveState`/`loadState` |
 | `src/msx/modem.ts`, `modem-cart.ts` | A-Prompt's Hayes modem; the cartridge puts it on ports 04h/05h |
 | `src/roms/okmodem.asm` | The modem cartridge's Z80 terminal (CALL TERM, ANSI to the MSX screen, CP437 table) |
 | `scripts/z80asm.ts`, `build-okmodem.ts` | Our Z80 assembler; the ROM build, CP437 box table found from the font |
@@ -91,6 +96,17 @@ exerciser after any change to `src/z80.ts`.
   TMS9918A); R#14 carries only with M4/M5 set; GRAPHIC6/7 interleave VRAM
   (physical = (L<<16 | L>>1) & 1FFFFh) for the CPU, commands and picture.
   Commands run at once; HMMC/LMMC take a pre-written R#44 as the first datum.
+- Slot 3: MSX1 64K RAM; expanded (RAM 3-0) when a disk ROM (3-1) or
+  MSX-MUSIC (3-3) is on; MSX2 SUB-ROM 3-0, mapper 3-2. Real BIOSes find
+  their RAM in an expanded slot (tested: same free bytes).
+- Disk: the machine traps 4010h DSKIO, 4013h DSKCHG, 4016h GETDPB, 401Ch
+  DSKFMT while page 1 is slot 3-1; sectors bound for page 1 go to the RAM
+  of page 3's slot. DSKIO returns B = sectors not done (0 on success).
+- Tape signal: plays only while the PPI motor bit (port C bit 4) is 0;
+  traps and signal share one place (`Tape.toBytes`/`level`). R14 bit 7.
+- MSX-MUSIC detection is the string "APRLOPLL" at 4018h of some slot.
+- The mouse answers PSG R15 pin 8 changes (bit 4 port 1): X hi, X lo,
+  Y hi, Y lo; a pause over ~1 ms starts a new read; right/down negative.
 - C-BIOS only starts cartridges: no BASIC, no disk. MSX BASIC and MSX-DOS
   ROMs are copyrighted; never add them to the repo.
 

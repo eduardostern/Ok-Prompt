@@ -9,6 +9,7 @@
  *   "diskrom:<name>" the player's own disk ROMs
  *   "disk"          the disk in the drive, with what was written
  *   "sram:<name>"   a cartridge's battery-backed RAM (its saved games)
+ *   "state:<n>"     save states 1-4
  */
 
 const DB = 'ok-prompt';
@@ -89,3 +90,17 @@ export const loadDisk = () => run<StoredCart>('readonly', (s) => s.get('disk'));
 const SRAM = 'sram:';
 export const saveSram = (name: string, data: Uint8Array) => put(SRAM + name, { name, data });
 export const loadSram = async (name: string) => (await run<StoredCart>('readonly', (s) => s.get(SRAM + name)))?.data;
+
+/** A save state slot: when, what ran, and everything to bring it back. */
+export interface SavedState {
+  when: number;
+  label: string;
+  bios: string;
+  diskRom: string;
+  fm: boolean;
+  carts: (StoredCart | null)[];
+  machine: unknown;
+}
+export const saveState = (n: number, st: SavedState | null) =>
+  run<unknown>('readwrite', (s) => (st ? s.put(st, `state:${n}`) : s.delete(`state:${n}`)) as IDBRequest<unknown>);
+export const loadState = (n: number) => run<SavedState>('readonly', (s) => s.get(`state:${n}`));

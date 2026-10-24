@@ -16,7 +16,7 @@ import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { detectCharset, KeyInput, KeyTable, msxChar, msxText, SPECIAL_KEYS } from './msx/keyboard';
 import { printedText } from './msx/printer';
 import { Mouse } from './msx/mouse';
-import { Bios, biosLabel, biosModel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
+import { Bios, biosLabel, biosModel, checkBios, CYCLES_PER_LINE, MachineState, Msx, REGIONS, Region } from './msx/machine';
 import { asciiCas, isTsx, loadCommand, Tape } from './msx/tape';
 import { MODEM_CART_NAME, ModemCartridge } from './msx/modem-cart';
 import { getDeepSeekKey, keyListeners, modemOptions, setDeepSeekKey } from './ui/modem-line';
@@ -28,7 +28,7 @@ import { SoundOut } from './ui/sound-out';
 import { MsxKeyboard } from './ui/msx-keyboard';
 import {
   loadAllBios, loadAllDiskRoms, loadCart, loadDisk, loadShelf, loadTape, removeBios, removeDiskRom, saveBios, saveCart,
-  saveDisk, saveDiskRom, saveTape, shelve, StoredCart, unshelve, loadSram, saveSram,
+  saveDisk, saveDiskRom, saveTape, shelve, StoredCart, unshelve, loadSram, saveSram, saveState, loadState,
 } from './ui/store';
 import { blankDisk, Disk, diskRomIn, SECTOR } from './msx/disk';
 
@@ -324,9 +324,12 @@ async function start(): Promise<void> {
     return cart;
   };
 
+  /** What is in each slot, as stored (for save states). */
+  const slotStored: (StoredCart | null)[] = [null, null];
   const insert = (n: 1 | 2, stored: StoredCart | null, persist = true) => {
     const old = msx.cartridges[n - 1];
     if (old instanceof ModemCartridge) old.modem.hangup(false);
+    slotStored[n - 1] = stored;
     msx.insert(n, stored ? makeCart(stored) : null);
     if (persist) void saveCart(n, stored);
     showSlot(n);
@@ -827,6 +830,98 @@ async function start(): Promise<void> {
   msx.printer.onPrint = () => { printShown = -1; };
   $('printer-clear').addEventListener('click', () => { msx.printer.clear(); showPrinter(); });
   $('printer-save').addEventListener('click', () => download('printout.txt', new TextEncoder().encode(printed())));
+  // ---- save states -------------------------------------------------------------
+
+  const statesEl = $('states');
+  const statesNote = $('states-note');
+  /** What is running, in a few words, to tell the states apart. */
+  const whatRuns = () => {
+    const parts = [...msx.cartridges.map((c) => c?.name), msx.tape?.name, msx.disk?.name].filter(Boolean);
+    const b = ownBios();
+    return parts.length ? parts.join(', ') : b ? label(b) : biosSel.selectedOptions[0]?.textContent ?? 'C-BIOS';
+  };
+  const time = (ms: number) => new Date(ms).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const showStates = async () => {
+    const rows = await Promise.all([1, 2, 3, 4].map(async (n) => {
+      const st = await loadState(n);
+      const li = document.createElement('li');
+      li.classList.toggle('used', Boolean(st));
+      const text = document.createElement('span');
+      text.className = 'state-label';
+      text.textContent = st ? `${n} · ${time(st.when)} · ${st.label}` : `${n} · empty`;
+      text.title = text.textContent;
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.textContent = 'Save';
+      saveBtn.title = `Save the MSX as it is now in state ${n}`;
+      saveBtn.addEventListener('click', () => void saveTo(n, Boolean(st)));
+      const loadBtn = document.createElement('button');
+      loadBtn.type = 'button';
+      loadBtn.textContent = 'Load';
+      loadBtn.title = `Go back to state ${n}`;
+      loadBtn.disabled = !st;
+      loadBtn.addEventListener('click', () => void loadFrom(n));
+      li.append(text, saveBtn, loadBtn);
+      return li;
+    }));
+    statesEl.replaceChildren(...rows);
+  };
+  const saveTo = async (n: number, overwrite: boolean) => {
+    if (!running) {
+      statesNote.textContent = 'Turn the MSX on first: there is nothing to save.';
+      return;
+    }
+    if (overwrite && !await askConfirm({ title: `Save over state ${n}?`, message: 'The state saved there now will be gone.', ok: 'Save' })) return;
+    await saveState(n, {
+      when: Date.now(),
+      label: whatRuns(),
+      bios: settings.bios,
+      diskRom: settings.diskRom,
+      fm: settings.fm,
+      carts: slotStored.slice(),
+      machine: msx.saveState(),
+    });
+    statesNote.textContent = `Saved in state ${n}.`;
+    void showStates();
+  };
+  const loadFrom = async (n: number) => {
+    const st = await loadState(n);
+    if (!st) return;
+    try {
+      if (!BUILT_IN[st.bios] && !biosList.some((b) => b.name === st.bios)) throw new Error(`its BIOS (${st.bios}) is not in this browser any more`);
+      if (st.diskRom && !diskRoms.some((r) => r.name === st.diskRom)) throw new Error(`its disk ROM (${st.diskRom}) is not in this browser any more`);
+      // The machine as it was: BIOS, disk ROM, FM, cartridges; then its state.
+      settings.bios = st.bios;
+      settings.diskRom = st.diskRom;
+      settings.fm = st.fm;
+      save();
+      msx.setBios(currentBios());
+      msx.setDiskRom(ownDiskRom()?.data ?? null);
+      msx.setFm(st.fm);
+      fmBox.checked = st.fm;
+      useKeyTable();
+      showBios();
+      showDiskRoms();
+      for (const n of [1, 2] as const) insert(n, st.carts[n - 1] ?? null);
+      msx.loadState(st.machine as MachineState);
+      const t = msx.tape;
+      void saveTape(t ? { name: t.file().name, data: t.file().data.slice() } : null);
+      const d = msx.disk;
+      void saveDisk(d ? { name: d.name, data: d.data.slice() } : null);
+      showTape();
+      showDisk();
+      if (!running) {
+        audioContext();
+        running = true;
+        showPower();
+      }
+      statesNote.textContent = `Back to state ${n}.`;
+    } catch (e) {
+      statesNote.textContent = `Could not load state ${n}: ${(e as Error).message}`;
+    }
+  };
+  void showStates();
+
   // ---- the mouse ---------------------------------------------------------------
 
   const mouse = new Mouse();

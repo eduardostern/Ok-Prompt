@@ -30,11 +30,38 @@ import { Rtc } from './rtc';
 import { ExpandedSlot, Ram, Rom, Slots, EMPTY, type SlotDevice } from './slots';
 import { V9938 } from './v9938';
 import type { VideoChip } from './video';
-import { Tape } from './tape';
+import { Tape, type TapeState } from './tape';
+import { grab, put, type ChipState } from './state';
 import { musicRom } from './music-rom';
 import { Disk, DiskRomSlot, DSKCHG, DSKFMT, DSKIO, dpb, GETDPB, NOT_READY, RECORD_NOT_FOUND, SECTOR } from './disk';
 import { Ym2413 } from './ym2413';
 import { Vdp } from './vdp';
+
+/** A machine's state (Msx.saveState), structured-clonable. */
+export interface MachineState {
+  version: 1;
+  model: Model;
+  region: Region;
+  frames: number;
+  cycleBase: number;
+  toType: string;
+  keysAsked: boolean;
+  cpu: ChipState;
+  primary: number;
+  subslots: number;
+  ram: Uint8Array;
+  mapper: ChipState;
+  rtc: ChipState;
+  ppi: ChipState;
+  psg: ChipState;
+  vdp: ChipState;
+  cmd: ChipState | null;
+  fm: ChipState | null;
+  carts: ({ name: string; state: ChipState; scc: ChipState | null } | null)[];
+  tape: TapeState | null;
+  disk: { name: string; data: Uint8Array; changed: boolean } | null;
+  printer: number[];
+}
 
 export const CPU_CLOCK = 3_579_545;
 export const CYCLES_PER_LINE = 228;
@@ -485,6 +512,73 @@ export class Msx {
     cpu.sp = (cpu.sp + 2) & 0xffff;
     cpu.cycles += 50;
     return true;
+  }
+
+  /**
+   * Everything the machine is, between two frames: CPU, memory, chips, the
+   * cartridges' banks and battery RAM, the tape and the disk with where
+   * they are. The ROMs are not in it (the page keeps those); load it into
+   * a machine with the same BIOS model and cartridges.
+   */
+  saveState(): MachineState {
+    const vdp = this.vdp;
+    return {
+      version: 1,
+      model: this.model,
+      region: this.region,
+      frames: this.frames,
+      cycleBase: this.cycleBase,
+      toType: this.toType,
+      keysAsked: this.keysAsked,
+      cpu: grab(this.cpu, ['mem']),
+      primary: this.slots.primary,
+      subslots: this.expanded.reg,
+      ram: this.ram.data.slice(),
+      mapper: grab(this.mapper),
+      rtc: grab(this.rtc),
+      ppi: grab(this.ppi, ['rows']),
+      psg: grab(this.psg, ['out', 'joystick']),
+      vdp: grab(vdp, ['frame']),
+      cmd: vdp instanceof V9938 ? grab(vdp.cmd) : null,
+      fm: this.fm ? (this.fm.save() as ChipState) : null,
+      carts: this.cartridges.map((c) => (c ? { name: c.name, state: grab(c, ['rom']), scc: c.scc ? grab(c.scc, ['out']) : null } : null)),
+      tape: this.tape?.saveState() ?? null,
+      disk: this.disk ? { name: this.disk.name, data: this.disk.data.slice(), changed: this.disk.changed } : null,
+      printer: this.printer.bytes.slice(),
+    };
+  }
+
+  /** Puts a saved state back (see saveState). Throws if the BIOS model differs. */
+  loadState(s: MachineState): void {
+    if (s.version !== 1) throw new Error('a save state from another version');
+    if (s.model !== this.model) throw new Error(`the state is of an ${s.model.toUpperCase()}, the BIOS now is an ${this.model.toUpperCase()}`);
+    this.setFm(s.fm !== null);
+    this.region = s.region;
+    this.frames = s.frames;
+    this.cycleBase = s.cycleBase;
+    this.toType = s.toType;
+    this.keysAsked = s.keysAsked;
+    put(this.cpu, s.cpu);
+    this.expanded.reg = s.subslots;
+    this.slots.primary = s.primary;
+    this.ram.data.set(s.ram);
+    put(this.mapper, s.mapper);
+    put(this.rtc, s.rtc);
+    put(this.ppi, s.ppi);
+    put(this.psg, s.psg);
+    put(this.vdp, s.vdp);
+    if (s.cmd && this.vdp instanceof V9938) put(this.vdp.cmd, s.cmd);
+    if (s.fm) this.fm!.load(s.fm);
+    s.carts.forEach((saved, i) => {
+      const c = this.cartridges[i];
+      if (!c || !saved || saved.name !== c.name) return;
+      put(c, saved.state);
+      if (c.scc && saved.scc) put(c.scc, saved.scc);
+    });
+    this.tape = s.tape ? Tape.fromState(s.tape) : null;
+    this.disk = s.disk ? new Disk(s.disk.data, s.disk.name) : null;
+    if (this.disk && s.disk) this.disk.changed = s.disk.changed;
+    this.printer.bytes = s.printer.slice();
   }
 
   /** The frame's sound: the PSG with any cartridge's SCC and MSX-MUSIC mixed in. */

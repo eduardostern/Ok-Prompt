@@ -530,3 +530,15 @@ body {
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* Save states */
+.states { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.states li { display: grid; grid-template-columns: 1fr auto auto; gap: 4px; align-items: center; }
+.states .state-label { font: 11px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.states li.used .state-label { color: var(--text); }
+.states button {
+  height: 26px; padding: 0 8px; border-radius: 6px; border: 1px solid #3b3f52;
+  background: #1d1f29; color: var(--text); font: 11px var(--mono); cursor: pointer;
+}
+.states button:hover:not(:disabled) { border-color: var(--accent); }
+.states button:disabled { opacity: 0.4; cursor: default; }

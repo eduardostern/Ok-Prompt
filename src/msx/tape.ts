@@ -24,6 +24,16 @@ export const CAS_MARKER = [0x1f, 0xa6, 0xde, 0xba, 0xcc, 0x13, 0x7d, 0x74];
 
 export type TapeKind = 'binary' | 'basic' | 'ascii';
 
+export interface TapeState {
+  name: string;
+  file: Uint8Array;
+  pos: number;
+  changed: boolean;
+  time: number;
+  lastCycle: number;
+  byTime: boolean;
+}
+
 export class Tape {
   /** Where the next read or write happens, in the .cas bytes. */
   pos = 0;
@@ -157,6 +167,25 @@ export class Tape {
     // Recorded over: the tape is a .cas now, played at the BIOS's speed.
     this.tsx = null;
     this.played = null;
+  }
+
+  /** For save states: the tape and where it is. */
+  saveState(): TapeState {
+    const f = this.file();
+    return {
+      name: this.name, file: f.data.slice(), pos: this.pos, changed: this.changed,
+      time: this.time, lastCycle: this.lastCycle, byTime: this.byTime,
+    };
+  }
+
+  static fromState(s: TapeState): Tape {
+    const t = new Tape(s.file, s.name);
+    t.pos = s.pos;
+    t.changed = s.changed;
+    t.time = s.time;
+    t.lastCycle = s.lastCycle;
+    t.byTime = s.byTime;
+    return t;
   }
 
   /** The kind and name of the first file on the tape. */

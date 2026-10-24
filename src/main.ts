@@ -15,7 +15,7 @@ import modemRomUrl from './roms/okmodem.rom?url';
 import { Cartridge, MAPPERS, Mapper } from './msx/cartridge';
 import { KeyInput, KeyTable, SPECIAL_KEYS } from './msx/keyboard';
 import { Bios, biosLabel, biosModel, checkBios, CYCLES_PER_LINE, Msx, REGIONS, Region } from './msx/machine';
-import { asciiCas, loadCommand, Tape } from './msx/tape';
+import { asciiCas, loadCommand, Tape, tsxToCas } from './msx/tape';
 import { MODEM_CART_NAME, ModemCartridge } from './msx/modem-cart';
 import { getDeepSeekKey, keyListeners, modemOptions, setDeepSeekKey } from './ui/modem-line';
 import { HEIGHT, WIDTH } from './msx/vdp';
@@ -293,9 +293,14 @@ async function start(): Promise<void> {
     let name = file.name;
     if (/\.zip$/i.test(name)) {
       const files = Object.entries(unzipSync(data)).filter(([n, d]) => d.length && !n.endsWith('/'));
-      const pick = files.find(([n]) => /\.(rom|mx1|mx2|bin|cas)$/i.test(n)) ?? files.sort((a, b) => b[1].length - a[1].length)[0];
+      const pick = files.find(([n]) => /\.(rom|mx1|mx2|bin|cas|tsx)$/i.test(n)) ?? files.sort((a, b) => b[1].length - a[1].length)[0];
       if (!pick) throw new Error('no ROM inside the zip');
       [name, data] = pick;
+    }
+    // A .tsx tape becomes the .cas the tape deck plays.
+    if (/\.tsx$/i.test(name)) {
+      data = tsxToCas(data);
+      name = name.replace(/\.tsx$/i, '.cas');
     }
     if (data.length > max) throw new Error(`too big for ${what}`);
     return { name: name.replace(/^.*\//, ''), data };
@@ -434,7 +439,7 @@ async function start(): Promise<void> {
     tapeEl.classList.toggle('full', Boolean(t));
     const first = t?.first();
     $('tape-label').textContent = !t
-      ? 'No tape: click or drop a .cas'
+      ? 'No tape: click or drop a .cas or .tsx'
       : first ? `${t.name} · ${first.name || 'no name'} (${KIND_LABEL[first.kind]})` : `${t.name} · blank`;
     showTapePos();
     markShelf();

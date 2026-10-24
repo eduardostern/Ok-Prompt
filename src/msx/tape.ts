@@ -125,3 +125,56 @@ export function asciiCas(name: string, text: string): Uint8Array {
   }
   return Uint8Array.from(out);
 }
+
+/**
+ * A .tsx tape (TZX with MSX blocks, as made by makeTSX) as a .cas: the data
+ * of each Kansas City block (ID 4Bh) after a marker. The other blocks (info,
+ * pauses, ZX Spectrum speed blocks) carry nothing the BIOS reads and are
+ * skipped. Throws if the file is not a TZX or holds no MSX data.
+ */
+export function tsxToCas(tsx: Uint8Array): Uint8Array<ArrayBuffer> {
+  const sig = 'ZXTape!\x1a';
+  if (tsx.length < 10 || [...sig].some((c, i) => tsx[i] !== c.charCodeAt(0))) throw new Error('not a .tsx tape');
+  const w = (p: number) => tsx[p] | (tsx[p + 1] << 8);
+  const t = (p: number) => w(p) | (tsx[p + 2] << 16);
+  const d = (p: number) => (w(p) | (w(p + 2) << 16)) >>> 0;
+  /** Length of a block's body after its ID byte, by TZX 1.20 (and 4Bh from TSX). */
+  const size = (id: number, p: number): number => {
+    switch (id) {
+      case 0x10: return 4 + w(p + 2);
+      case 0x11: return 18 + t(p + 15);
+      case 0x12: return 4;
+      case 0x13: return 1 + 2 * tsx[p];
+      case 0x14: return 10 + t(p + 7);
+      case 0x15: return 8 + t(p + 5);
+      case 0x18: case 0x19: case 0x4b: return 4 + d(p);
+      case 0x20: case 0x23: case 0x24: return 2;
+      case 0x21: case 0x30: return 1 + tsx[p];
+      case 0x22: case 0x25: case 0x27: return 0;
+      case 0x26: return 2 + 2 * w(p);
+      case 0x28: case 0x32: return 2 + w(p);
+      case 0x2a: return 4;
+      case 0x2b: return 5;
+      case 0x31: return 2 + tsx[p + 1];
+      case 0x33: return 1 + 3 * tsx[p];
+      case 0x35: return 20 + d(p + 16);
+      case 0x5a: return 9;
+      default: return 4 + d(p); // TZX: unknown blocks start with a 4-byte length
+    }
+  };
+  const out: number[] = [];
+  let p = 10;
+  while (p < tsx.length) {
+    const id = tsx[p++];
+    const n = size(id, p);
+    if (id === 0x4b) {
+      // length (4), pause (2), pilot, pulses, bit 0, bit 1 (2 each), two config bytes, then the data
+      const data = tsx.subarray(p + 16, p + 4 + d(p));
+      while (out.length & 7) out.push(0);
+      out.push(...CAS_MARKER, ...data);
+    }
+    p += n;
+  }
+  if (!out.length) throw new Error('no MSX data on this .tsx');
+  return Uint8Array.from(out);
+}

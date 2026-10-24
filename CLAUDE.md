@@ -42,7 +42,7 @@ exerciser after any change to `src/z80.ts`.
 | `src/msx/mapper.ts`, `rtc.ts` | MSX2 memory mapper (ports FCh-FFh) and RP5C01 clock (B4h/B5h); `ExpandedSlot` is in slots.ts |
 | `src/msx/psg.ts` | AY-3-8910, `advanceTo(cycles)`, joystick on R14 |
 | `src/msx/scc.ts` | Konami SCC wave chip, owned by `konamiscc` cartridges, mixed in `Msx.takeAudio()` |
-| `src/msx/tape.ts` | `.cas` images: block markers, read/write, first file's kind and load command |
+| `src/msx/tape.ts` | `.cas` images: block markers, read/write, first file's kind and load command; `.tsx` to `.cas` (`tsxToCas`) |
 | `src/msx/modem.ts`, `modem-cart.ts` | A-Prompt's Hayes modem; the cartridge puts it on ports 04h/05h |
 | `src/roms/okmodem.asm` | The modem cartridge's Z80 terminal (CALL TERM, ANSI to the MSX screen, CP437 table) |
 | `scripts/z80asm.ts`, `build-okmodem.ts` | Our Z80 assembler; the ROM build, CP437 box table found from the font |

@@ -45,7 +45,7 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
   Gradiente Expert's, or for an MSX2 its main ROM and SUB-ROM together (two
   files or a zip). They stay in your browser; Ok-Prompt never ships
   copyrighted ROMs. On an MSX2 the modem terminal shows 80 columns.
-- Tapes (`.cas`) go in the tape deck under the slots. With your own BIOS,
+- Tapes (`.cas`, or `.tsx`, read as the `.cas` inside) go in the tape deck under the slots. With your own BIOS,
   *Load* resets the MSX and types `BLOAD"CAS:",R`, `CLOAD` or `RUN"CAS:"`
   for you. *Blank* gives a tape to `CSAVE` on; download it with ⤓. Games
   with their own turbo loaders do not load this way.
@@ -76,7 +76,7 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
 | AY-3-8910 | Three tones, noise, envelope, joystick port; rendered in step with CPU time |
 | PPI | Slot select, keyboard matrix, CAPS lamp, key click |
 | Cartridges | Plain ROMs up to 64K; Konami, Konami SCC, ASCII 8K and 16K MegaROMs |
-| Cassette | `.cas` tapes through the BIOS tape routines: load, record, download |
+| Cassette | `.cas` and `.tsx` tapes through the BIOS tape routines: load, record, download |
 | Modem | Ok-Modem cartridge: a Hayes modem on ports 04h/05h (A-Prompt's), a Z80 terminal in its ROM, real BBSes and the DeepSeek AI board |
 | SCC | Konami's five-channel wave-table chip in SCC cartridges, mixed with the PSG |
 

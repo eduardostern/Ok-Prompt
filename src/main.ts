@@ -795,6 +795,8 @@ async function start(): Promise<void> {
   const typing = (e: Event) => (e.target as Partial<Element> | null)?.closest?.('input, select, textarea, dialog');
   window.addEventListener('keydown', (e) => {
     if (!running || typing(e) || e.metaKey) return;
+    // Ctrl+Shift+V pastes (Windows, Linux): leave it to the browser.
+    if (e.ctrlKey && e.shiftKey && e.code === 'KeyV') return;
     if (keys.down(e.code, e.key, e.ctrlKey, e.altKey)) e.preventDefault();
   });
   window.addEventListener('keyup', (e) => {
@@ -815,7 +817,7 @@ async function start(): Promise<void> {
     try {
       paste(await navigator.clipboard.readText());
     } catch {
-      alert('The browser would not share the clipboard. Press ⌘V or Ctrl+Shift+V on the page instead.');
+      alert('The browser would not share the clipboard. Press ⌘V (Mac) or Ctrl+Shift+V on the page instead.');
     }
   });
 

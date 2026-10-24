@@ -9,9 +9,10 @@ export default defineConfig({
     target: 'es2020',
     outDir: 'dist',
     rollupOptions: {
-      // The emulator, and the history page beside it.
+      // The emulator, and the manual and history pages beside it.
       input: {
         main: resolve(__dirname, 'index.html'),
+        manual: resolve(__dirname, 'manual.html'),
         history: resolve(__dirname, 'history.html'),
       },
     },

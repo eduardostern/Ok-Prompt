@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Manual · Ok-Prompt</title>
+    <meta name="description" content="How to use Ok-Prompt: machines and BIOS, cartridges, keyboard, tapes, the disk drive, FM sound, save states, printer, mouse and the modem." />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="history">
+    <div class="doc">
+      <nav class="doc-nav">
+        <a href="./" class="brand-sm"><span class="ok">Ok</span>-Prompt</a>
+        <span class="doc-links"><a href="./history.html" class="doc-back">History</a> <a href="./" class="doc-back">← Back to the MSX</a></span>
+      </nav>
+
+      <header class="doc-head">
+        <span class="kicker">Owner's manual</span>
+        <h1>Using Ok-Prompt</h1>
+        <p class="lede">
+          An MSX in your browser: the MSX1, MSX2 and MSX2+, with cartridges, a
+          tape deck, a disk drive, FM sound and a modem. Everything you load
+          stays in this browser for next time.
+        </p>
+        <ol class="toc">
+          <li><a href="#start">Getting started</a></li>
+          <li><a href="#machines">Choosing the machine</a></li>
+          <li><a href="#cartridges">Cartridges and the shelf</a></li>
+          <li><a href="#keyboard">Keyboard, paste and joysticks</a></li>
+          <li><a href="#tapes">Tapes</a></li>
+          <li><a href="#disks">The disk drive</a></li>
+          <li><a href="#sound">Sound and FM music</a></li>
+          <li><a href="#states">Save states</a></li>
+          <li><a href="#printer">The printer</a></li>
+          <li><a href="#modem">The modem and the AI board</a></li>
+          <li><a href="#storage">What the browser keeps</a></li>
+          <li><a href="#trouble">When something does not work</a></li>
+        </ol>
+      </header>
+
+      <section id="start" class="chapter">
+        <h2><span>1</span>Getting started</h2>
+        <div class="cols">
+          <div>
+            <ol class="facts">
+              <li>Open the page and press a key or click the screen: the MSX switches on (browsers only allow sound after that). Tick <b>Power on by itself</b> in the Machine panel to skip this next time.</li>
+              <li>The built-in machine is <b>C-BIOS</b>, a free MSX system ROM. It starts cartridges but has no BASIC, so with nothing in the slots it says <i>No cartridge found</i>.</li>
+              <li>Drop a game (<code>.rom</code>, or a <code>.zip</code> with one inside) anywhere on the page. It goes in slot 1 and the MSX restarts with it.</li>
+              <li>For MSX BASIC, load the ROM of a real machine (next chapter).</li>
+            </ol>
+          </div>
+          <aside class="callout">
+            <h3>The panels</h3>
+            <ul>
+              <li><b>Machine</b> (left): power, reset, save states, region, speed, the system ROM and the disk drive's ROM.</li>
+              <li><b>Centre</b>: the monitor, two cartridge slots, the tape deck, the disk drive, the on-screen keyboard and the shelf.</li>
+              <li><b>Settings</b> (right): display, sound and FM, keyboard and joystick port, paste, printer, modem.</li>
+            </ul>
+          </aside>
+        </div>
+        <p class="muted">
+          <b>Speed</b> runs the MSX at 2x or 4x (sound is muted then). <b>Region</b> picks 60 Hz (NTSC, as in Japan
+          and Brazil) or 50 Hz (PAL, Europe) on an MSX1; an MSX2 BIOS sets it itself.
+        </p>
+      </section>
+
+      <section id="machines" class="chapter">
+        <h2><span>2</span>Choosing the machine</h2>
+        <p class="intro">
+          The <b>System ROM</b> menu decides which computer you have. The three C-BIOS machines are built in;
+          ROMs of real machines are copyrighted, so you load dumps of your own and they stay in your browser.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>You load</th><th>You get</th><th>Files</th></tr></thead>
+            <tbody>
+              <tr><th>Nothing</th><td>C-BIOS MSX1, MSX2 or MSX2+: runs cartridges, no BASIC</td><td>Built in</td></tr>
+              <tr><th>An MSX1 BIOS</th><td>MSX BASIC: Gradiente Expert 1.0 or 1.1, Sharp Hotbit, any MSX1</td><td>One 32K file, such as <code>expert_1.1_basic-bios1.rom</code></td></tr>
+              <tr><th>An MSX2 BIOS</th><td>MSX BASIC 2.0, 80 columns, SCREEN 5-8</td><td>Main ROM and SUB-ROM together (two files, or one zip)</td></tr>
+              <tr><th>The Brazilian MSX2+ kit</th><td>Your Expert or Hotbit as an MSX2+: BASIC 3.0, the MSX2+ logo, 512K, and MSX-MUSIC if its SUB-ROM has it</td><td>A <code>main_2p_…</code> ROM and a <code>sub_2p_…</code> ROM together</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cols">
+          <div>
+            <h3>Loading a BIOS</h3>
+            <ol class="facts">
+              <li>Click <b>Load BIOS…</b> under System ROM.</li>
+              <li>Pick the file, or for an MSX2 or MSX2+ both files at once (hold ⌘ or Ctrl to select two), or a zip with both.</li>
+              <li>It joins the System ROM menu and the MSX restarts with it. Switch machines from the menu any time; <b>Remove</b> forgets the one selected.</li>
+            </ol>
+          </div>
+          <aside class="callout">
+            <h3>The MSX2+ kit, step by step</h3>
+            <ul>
+              <li>Main ROM: <code>main_2p_expert_com_f4.rom</code> for an Expert, <code>main_2p_hotbit_com_f4.rom</code> for a Hotbit (they differ in the keyboard).</li>
+              <li>SUB-ROM: a <code>com_rtc</code> one (Ok-Prompt has the clock chip). <code>com_fm</code> brings MSX-MUSIC and its FM-BASIC (<code>CALL MUSIC</code>, <code>PLAY #2</code>); <code>logo1</code> or <code>logo2</code> is the start-up logo.</li>
+              <li>BASIC first comes up in SCREEN 1, because the clock's settings memory is empty. Type <code>SCREEN 0:WIDTH 80:SET SCREEN</code> and it remembers 80 columns from then on.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section id="cartridges" class="chapter">
+        <h2><span>3</span>Cartridges and the shelf</h2>
+        <ul class="facts">
+          <li>Click a slot or drop a file on the page to load a cartridge (<code>.rom</code>, <code>.mx1</code>, <code>.mx2</code>, <code>.bin</code>, or a <code>.zip</code>). The <b>⏏</b> takes it out.</li>
+          <li>Every cartridge, tape and disk you load goes on the <b>shelf</b> under the slots. Click one to put it back in slot 1, or its <b>2</b> for slot 2; <b>×</b> takes it off the shelf.</li>
+          <li>Big cartridges switch banks of memory, and makers did it differently. Ok-Prompt guesses the scheme from the code; if a game does not start, pick another in the menu under its slot: <i>Konami</i>, <i>Konami SCC</i>, <i>ASCII 8K</i>, <i>ASCII 16K</i>.</li>
+          <li><b>Games that save</b> (role-playing games with battery-backed memory) need <i>ASCII 8K + 8K battery RAM</i> or <i>ASCII 16K + 2K battery RAM</i> in that menu. Their saves stay in the browser and come back with the cartridge.</li>
+        </ul>
+      </section>
+
+      <section id="keyboard" class="chapter">
+        <h2><span>4</span>Keyboard, paste and joysticks</h2>
+        <div class="cols">
+          <div>
+            <p>
+              Keys type what is printed on your PC keyboard: symbols and accents go through the key table of the BIOS
+              in use, so a Brazilian keyboard types <code>ç</code>, <code>ã</code> and <code>"</code> correctly on an
+              Expert. Letters, arrows and Space keep their MSX places for games. The <b>Keyboard</b> setting can put
+              every key in its MSX place instead.
+            </p>
+            <h3>Keys the PC does not have</h3>
+            <div class="table-wrap">
+              <table class="compare">
+                <tbody>
+                  <tr><th>GRAPH</th><td>Left Alt</td></tr>
+                  <tr><th>CODE</th><td>Right Alt (accents on Brazilian MSXs)</td></tr>
+                  <tr><th>STOP</th><td>F7 (CTRL+STOP: Ctrl+F7)</td></tr>
+                  <tr><th>SELECT</th><td>F8</td></tr>
+                  <tr><th>F6-F10</th><td>Shift + F1-F5</td></tr>
+                  <tr><th>Numeric keypad</th><td>The PC's keypad</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="callout">
+            <h3>Paste a program</h3>
+            <ul>
+              <li>Copy a BASIC listing anywhere, then click <b>📋 Paste text</b> or press ⌘V (Mac) or Ctrl+Shift+V on the page.</li>
+              <li>Each line goes in as if typed, Enter after each, so the listing becomes a program. Then <code>RUN</code>.</li>
+            </ul>
+            <h3>On-screen keyboard</h3>
+            <ul>
+              <li><b>⌨ Keyboard</b> under the deck shows an MSX keyboard with the legends of your BIOS, for touch screens. SHIFT, CTRL, GRAPH and CODE stay down until the next key.</li>
+            </ul>
+          </aside>
+        </div>
+        <h3>Joysticks and the mouse</h3>
+        <ul class="facts">
+          <li>Arrow keys and Space work in most games. A <b>gamepad</b> is joystick 1: plug it in and press a button.</li>
+          <li><b>Joystick port 1</b> (Settings) can hold an <b>MSX mouse</b> instead, for drawing programs. Click the screen to take the pointer; Esc gives it back. The left and right buttons are the mouse's.</li>
+        </ul>
+      </section>
+
+      <section id="tapes" class="chapter">
+        <h2><span>5</span>Tapes</h2>
+        <div class="cols">
+          <div>
+            <ul class="facts">
+              <li>Click the tape deck or drop a <code>.cas</code> or <code>.tsx</code> file. The deck shows the first file on the tape and its kind.</li>
+              <li><b>▶ Load</b> (with a BIOS that has BASIC) restarts the MSX and types the right command for you. Or type it yourself:
+                <code>BLOAD"CAS:",R</code> (machine code), <code>CLOAD</code> then <code>RUN</code> (BASIC), <code>RUN"CAS:"</code> (BASIC as text).</li>
+              <li><b>⏮</b> rewinds; the number beside the tape is how far it has played.</li>
+              <li><b>＋ Blank</b> inserts an empty tape: <code>CSAVE"NAME"</code>, <code>SAVE"CAS:NAME"</code> or <code>BSAVE"CAS:…</code> record on it, and <b>⤓</b> downloads it.</li>
+            </ul>
+          </div>
+          <aside class="callout">
+            <h3>Games with their own loaders</h3>
+            <p>
+              Most tapes load through the BIOS, and Ok-Prompt reads those at once. Games with their own (often
+              faster) loaders read the sound of the tape instead: while the cassette motor runs, the deck plays
+              the tape's signal for them, a <code>.tsx</code> with its own original timing. They load at the
+              real speed, so wait as you would have in 1986.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="disks" class="chapter">
+        <h2><span>6</span>The disk drive</h2>
+        <p class="intro">
+          A disk drive needs the <b>disk ROM</b> of a real drive (it holds Disk BASIC and MSX-DOS, which are
+          copyrighted). Load yours once and it stays in the browser. How disk drives worked, and the Brazilian
+          models, is in <a href="./history.html#disks">the history page</a>.
+        </p>
+        <div class="cols">
+          <div>
+            <h3>Setting it up</h3>
+            <ol class="facts">
+              <li>Under <b>Disk drive</b> in the Machine panel, click <b>Load disk ROM…</b> and pick the ROM (16K, or a zip with it). The MSX restarts with a drive.</li>
+              <li>A drive appears under the tape deck. Drop a <code>.dsk</code> on the page or click the drive; <b>＋ Blank</b> inserts an empty 720K disk.</li>
+              <li>An MSX1 has no clock, so the disk ROM asks for the date as it starts, as a real one did. Type it the way it asks (some want day-month-year, some month-day-year), or just press Enter.</li>
+              <li>You get Disk BASIC. A disk with <code>MSXDOS.SYS</code> and <code>COMMAND.COM</code> on it boots MSX-DOS instead.</li>
+            </ol>
+            <h3>Disk BASIC in five commands</h3>
+            <div class="table-wrap">
+              <table class="compare">
+                <tbody>
+                  <tr><th><code>FILES</code></th><td>Lists the disk</td></tr>
+                  <tr><th><code>SAVE"NAME"</code></th><td>Saves the program (<code>LOAD"NAME"</code>, <code>RUN"NAME"</code> bring it back)</td></tr>
+                  <tr><th><code>BLOAD"GAME.BIN",R</code></th><td>Loads and starts machine code</td></tr>
+                  <tr><th><code>KILL"NAME.BAS"</code></th><td>Deletes a file</td></tr>
+                  <tr><th><code>CALL FORMAT</code></th><td>Formats the disk: answer A, then any key</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="callout">
+            <h3>Which disk ROMs work</h3>
+            <ul>
+              <li>Any plain MSX disk ROM: tested with the Philips VG-8235, Sony HB-3600, Microsol CDX-2 and FastDROM (its CDX-2 version), on the Expert 1.0 and 1.1, the Hotbit, international MSX1s and the MSX2+ kit.</li>
+              <li>Some EPROM dumps from Brazilian boards (DDX, TPX, DMX) are wired in a scrambled order and do not read as a disk ROM. Use the CDX-2 or FastDROM CDX-2 file for those drives: it does the same job here.</li>
+              <li>FastDROM leaves the most memory free.</li>
+            </ul>
+            <h3>Keeping your disks</h3>
+            <ul>
+              <li>Whatever the MSX writes is kept in the browser. <b>⤓</b> downloads the disk as a <code>.dsk</code>, to keep or open in other emulators.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section id="sound" class="chapter">
+        <h2><span>7</span>Sound and FM music</h2>
+        <ul class="facts">
+          <li>The MSX's own sound chip (three tones and noise) always plays; Konami SCC cartridges add their five wave channels.</li>
+          <li><b>FM sound (MSX-MUSIC)</b>, in the Sound panel, puts the Yamaha YM2413 FM chip in the machine, as in the FM-PAC cartridge and the MSX2+ machines. Games that know it play their FM music. Switching it restarts the MSX.</li>
+          <li>With the MSX2+ kit's <code>com_fm</code> SUB-ROM the chip is built in, with its FM-BASIC: <code>CALL MUSIC</code>, then <code>PLAY #2,"CDEFGAB"</code>.</li>
+          <li>The volume slider is in the Sound panel; sound starts after the first click or key on the page.</li>
+        </ul>
+      </section>
+
+      <section id="states" class="chapter">
+        <h2><span>8</span>Save states</h2>
+        <ul class="facts">
+          <li>The four slots under <b>Save states</b> (Machine panel) each keep the whole machine: memory, chips, cartridges, the tape and the disk where they are.</li>
+          <li><b>Save</b> stores the MSX as it is now; saving over a used slot asks first. <b>Load</b> brings it back, BIOS, disk ROM and cartridges included, exactly where it was.</li>
+          <li>A state needs its BIOS and disk ROM still loaded in the browser. States are kept in this browser only.</li>
+        </ul>
+      </section>
+
+      <section id="printer" class="chapter">
+        <h2><span>9</span>The printer</h2>
+        <p>
+          <code>LPRINT "Hello"</code> and <code>LLIST</code> print on the paper in the <b>Printer</b> panel.
+          <b>⤓ Download</b> saves the printout as a text file; <b>Clear</b> starts a new page.
+        </p>
+      </section>
+
+      <section id="modem" class="chapter">
+        <h2><span>10</span>The modem and the AI board</h2>
+        <div class="cols">
+          <div>
+            <ol class="facts">
+              <li>Put <b>☎ Ok-Modem</b> from the shelf into a slot.</li>
+              <li>With MSX BASIC type <code>CALL TERM</code>; with C-BIOS the terminal starts by itself. On an MSX2 it shows 80 columns.</li>
+              <li><code>ATI</code> lists the BBSes, <code>ATDT 1</code> calls the first one. You hear the dial tone and the handshake.</li>
+              <li><code>ATDT DEEPSEEK</code> calls the AI board: chat with the sysop or the BOFH, or order a BASIC program; it arrives on your tape for <code>RUN"CAS:"</code>.</li>
+              <li>CTRL+STOP (Ctrl+F7) goes back to BASIC.</li>
+            </ol>
+          </div>
+          <aside class="callout">
+            <h3>The DeepSeek key</h3>
+            <p>
+              The AI board uses your own DeepSeek API key: paste it in the Modem panel. It stays in this browser
+              and goes only to DeepSeek. The panel explains how to get one.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="storage" class="chapter">
+        <h2><span>11</span>What the browser keeps</h2>
+        <p>
+          Your BIOS and disk ROMs, the cartridges in the slots and on the shelf, the tape, the disk, battery saves,
+          save states, settings and the MSX2 clock's memory stay in this browser, on this computer. Nothing is
+          uploaded. Clearing the site's data (or a private window) starts afresh, so download tapes and disks you
+          want to keep.
+        </p>
+      </section>
+
+      <section id="trouble" class="chapter">
+        <h2><span>12</span>When something does not work</h2>
+        <ul class="facts">
+          <li><b>A game shows a black screen or restarts:</b> try another bank scheme in the menu under its slot.</li>
+          <li><b>No sound:</b> click the page once; check the volume, and that Speed is Normal.</li>
+          <li><b>A tape game does not load with ▶ Load:</b> it needs a BIOS with BASIC; C-BIOS cannot load tapes by itself.</li>
+          <li><b>The disk ROM is refused:</b> it is probably a scrambled board dump; use a plain one (see <a href="#disks">The disk drive</a>).</li>
+          <li><b>BASIC answers <i>Invalid date</i> at start-up:</b> the disk ROM is asking for the date; type it in the order it shows, or press Enter.</li>
+          <li><b>The MSX2+ comes up in 32 columns:</b> <code>SCREEN 0:WIDTH 80:SET SCREEN</code>.</li>
+          <li><b>Keys type the wrong symbols:</b> switch the Keyboard setting between <i>Types what your keys say</i> and <i>MSX key positions</i>.</li>
+        </ul>
+      </section>
+
+      <section class="chapter try">
+        <h2>Ready?</h2>
+        <p>Load a BIOS, drop in a cartridge, a tape or a disk, and type <code>PRINT "Olá, MSX"</code>.</p>
+        <a class="cta" href="./">Open the MSX →</a>
+      </section>
+
+      <footer class="foot">
+        Ok-Prompt · © 2026 Eduardo Stern · <a href="./history.html">History of MSX</a> ·
+        siblings: <a href="https://a-prompt.stern.workers.dev">A-Prompt</a> (CP/M),
+        <a href="https://k-prompt.stern.workers.dev">K-Prompt</a> (ZX Spectrum, TK90X) ·
+        <a href="https://github.com/eduardostern/Ok-Prompt">Source</a> ·
+        MSX is a trademark of MSX Licensing Corporation
+      </footer>
+    </div>
+    <script type="module" src="./src/history.ts"></script>
+  </body>
+</html>

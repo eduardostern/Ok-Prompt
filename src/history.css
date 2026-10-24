@@ -194,3 +194,6 @@ td { color: #c9cee0; }
   .lede { font-size: 16px; }
   tbody th { white-space: normal; }
 }
+
+.doc-links { display: flex; gap: 18px; }
+.chapter ol.facts { padding-left: 22px; }

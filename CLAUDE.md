@@ -1,6 +1,6 @@
 # Ok-Prompt — notes for Claude
 
-MSX1 emulator for the browser in TypeScript. Static site (Vite). Sibling of
+MSX1, MSX2 and MSX2+ emulator for the browser in TypeScript. Static site (Vite). Sibling of
 A-Prompt (`~/cpm`, CP/M), whose Z80 core it uses. Game-like UI: the monitor
 in the centre, the cartridge deck under it, panels on both sides.
 
@@ -36,7 +36,10 @@ exerciser after any change to `src/z80.ts`.
 | `src/msx/machine.ts` | The MSX1: wiring, ports, `runFrame()` (262/313 lines of 228 cycles) |
 | `src/msx/slots.ts` | Primary slots, `Rom`, `Ram`, `EMPTY` |
 | `src/msx/cartridge.ts` | Plain and MegaROM mappers, `guessMapper` |
-| `src/msx/vdp.ts` | TMS9918A, `renderLine` per picture line, `vblank` |
+| `src/msx/vdp.ts` | TMS9918A (MSX1), `renderLine` per picture line, `vblank` |
+| `src/msx/v9938.ts`, `v9938-cmd.ts` | V9938/V9958 (MSX2/2+) and its command engine; `docs/v9938.md` is the spec they follow |
+| `src/msx/video.ts` | `VideoChip`, what the machine needs from either chip |
+| `src/msx/mapper.ts`, `rtc.ts` | MSX2 memory mapper (ports FCh-FFh) and RP5C01 clock (B4h/B5h); `ExpandedSlot` is in slots.ts |
 | `src/msx/psg.ts` | AY-3-8910, `advanceTo(cycles)`, joystick on R14 |
 | `src/msx/scc.ts` | Konami SCC wave chip, owned by `konamiscc` cartridges, mixed in `Msx.takeAudio()` |
 | `src/msx/tape.ts` | `.cas` images: block markers, read/write, first file's kind and load command |
@@ -81,6 +84,13 @@ exerciser after any change to `src/z80.ts`.
   too late and the board goes DUMB. Same code as A-Prompt and K-Prompt.
 - MSX ASCII tapes: header EAh x 10 + name, then 256-byte blocks, CR LF
   lines, 1Ah padding (asciiCas matches the Expert's SAVE"CAS:" exactly).
+- The model comes from the main ROM's byte 002Dh (`biosModel`): MSX2/2+
+  get C-BIOS's layout (main + logo in slot 0, SUB-ROM 3-0, 512K mapper 3-2),
+  a V9938/V9958 (576x240 frame) and the BIOS's own 50/60 Hz (R#9 NT).
+- V9938: the first control byte does not touch the address (unlike the
+  TMS9918A); R#14 carries only with M4/M5 set; GRAPHIC6/7 interleave VRAM
+  (physical = (L<<16 | L>>1) & 1FFFFh) for the CPU, commands and picture.
+  Commands run at once; HMMC/LMMC take a pre-written R#44 as the first datum.
 - C-BIOS only starts cartridges: no BASIC, no disk. MSX BASIC and MSX-DOS
   ROMs are copyrighted; never add them to the repo.
 

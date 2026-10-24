@@ -3,9 +3,10 @@
 **An MSX in your browser. Drop in a cartridge and play.**
 Live at **https://ok-prompt.stern.workers.dev**.
 
-Ok-Prompt is an MSX1 emulator in TypeScript: a Z80 at 3.58 MHz, the
-TMS9918A video chip, the AY-3-8910 sound chip, the 8255 PPI with the
-keyboard, and the MSX slot system with cartridges. It boots
+Ok-Prompt is an MSX1, MSX2 and MSX2+ emulator in TypeScript: a Z80 at
+3.58 MHz, the TMS9918A video chip (and on MSX2 the V9938, on MSX2+ the
+V9958), the AY-3-8910 sound chip, the 8255 PPI with the keyboard, and the
+MSX slot system with cartridges. It boots
 [C-BIOS](http://cbios.sourceforge.net/), the free MSX BIOS, so nothing
 copyrighted ships with it: plug in a game ROM and it starts.
 
@@ -39,9 +40,11 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
   click a cartridge slot. Slots are remembered in this browser.
 - Every ROM you load stays on the shelf under the slots: click it to put
   it back in slot 1, or on its 2 for slot 2.
-- *System ROM* swaps C-BIOS for a BIOS dump of your own (16K-64K, such as
-  the Gradiente Expert's 32K ROM) to boot into MSX BASIC. It stays in your
-  browser; Ok-Prompt never ships copyrighted ROMs.
+- *System ROM* picks the machine: C-BIOS MSX1, MSX2 or MSX2+ (built in),
+  or BIOS dumps of your own to boot into MSX BASIC: a 32K ROM such as the
+  Gradiente Expert's, or for an MSX2 its main ROM and SUB-ROM together (two
+  files or a zip). They stay in your browser; Ok-Prompt never ships
+  copyrighted ROMs. On an MSX2 the modem terminal shows 80 columns.
 - Tapes (`.cas`) go in the tape deck under the slots. With your own BIOS,
   *Load* resets the MSX and types `BLOAD"CAS:",R`, `CLOAD` or `RUN"CAS:"`
   for you. *Blank* gives a tape to `CSAVE` on; download it with ⤓. Games
@@ -66,7 +69,9 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
 | Part | State |
 | --- | --- |
 | Z80 | Complete, Zilog timing, interrupt modes 0-2 and NMI, the EI delay |
-| Slots | Four primary slots: BIOS, two cartridge ports, 64K RAM |
+| Slots | Four primary slots: BIOS, two cartridge ports, 64K RAM; on MSX2 slot 3 expanded (SUB-ROM in 3-0, a 512K memory mapper in 3-2) |
+| V9938 / V9958 | MSX2 and MSX2+ video: 128K VRAM, palette, all ten modes (TEXT2 80 columns, SCREEN 5-8, YJK SCREEN 10-12), sprites mode 2, line interrupts, scroll, the command engine (spec in `docs/v9938.md`) |
+| RTC | The MSX2's RP5C01 clock, its settings memory kept in the browser |
 | TMS9918A | Graphics I and II, multicolour, text; sprites with the 4-per-line limit, 5S and collision flags; drawn a line at a time |
 | AY-3-8910 | Three tones, noise, envelope, joystick port; rendered in step with CPU time |
 | PPI | Slot select, keyboard matrix, CAPS lamp, key click |
@@ -78,7 +83,7 @@ npm run deploy     # build and publish to ok-prompt.stern.workers.dev (Cloudflar
 ## Next
 
 - Disk drives and MSX-DOS (which runs CP/M programs, like A-Prompt's).
-- Expanded slots, MSX2 (V9938).
+- Command engine timing (commands finish at once for now), MSX-MUSIC.
 - Save states, touch controls, a WebGL CRT shader.
 
 ## Credits and licence

@@ -35,6 +35,7 @@
           <li><a href="#printer">The printer</a></li>
           <li><a href="#modem">The modem and the AI board</a></li>
           <li><a href="#storage">What the browser keeps</a></li>
+          <li><a href="#software">Where to find software</a></li>
           <li><a href="#trouble">When something does not work</a></li>
         </ol>
       </header>
@@ -282,8 +283,50 @@
         </p>
       </section>
 
+      <section id="software" class="chapter">
+        <h2><span>12</span>Where to find software</h2>
+        <p class="intro">
+          Most MSX software, and every real machine's BIOS and disk ROM, is still copyrighted. Ok-Prompt ships
+          none of it: what you load is your own business. The cleanest sources come first.
+        </p>
+        <div class="cols">
+          <div>
+            <h3>Free or legal</h3>
+            <ul class="facts">
+              <li><a href="https://cbios.sourceforge.net/">C-BIOS</a>: the free MSX1, MSX2 and MSX2+ BIOS, already built in.</li>
+              <li><a href="https://www.msxdev.org/">MSXdev</a>: the yearly contest for new MSX games. Its entries are homebrew, usually free to download.</li>
+              <li><a href="https://www.amusement-center.com/">Project EGG</a>: official re-releases of Japanese computer games, MSX among them (paid, mostly in Japanese).</li>
+              <li><b>Your own machine and cartridges</b>: dumping what you own is the surest way. <a href="https://openmsx.org/manual/setup.html">openMSX's setup guide</a> explains system ROMs and dumps.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Community archives</h3>
+            <ul class="facts">
+              <li><a href="https://www.file-hunter.com/">File-Hunter</a>: the largest MSX archive: games, tapes, disks, system ROMs; some publishers allowed their titles there.</li>
+              <li><a href="https://www.msxpro.com/">MSXPro</a>: Brazilian, strong on Brazilian machines, BIOS versions and disk interfaces.</li>
+              <li><a href="https://www.msx.org/">MSX Resource Center</a>: news, the MSX wiki, and downloads of homebrew and tools.</li>
+              <li><a href="https://www.generation-msx.nl/">Generation MSX</a>: a catalogue of every MSX release (what exists, who made it, which machine it needs), with no downloads.</li>
+            </ul>
+            <p class="muted">These archives host copyrighted files too; for many titles that is a grey area.</p>
+          </div>
+        </div>
+        <h3>What Ok-Prompt reads</h3>
+        <div class="table-wrap">
+          <table class="compare">
+            <tbody>
+              <tr><th>Cartridges</th><td><code>.rom</code>, <code>.mx1</code>, <code>.mx2</code>, <code>.bin</code></td></tr>
+              <tr><th>Tapes</th><td><code>.cas</code>, <code>.tsx</code></td></tr>
+              <tr><th>Disks</th><td><code>.dsk</code> (360K or 720K)</td></tr>
+              <tr><th>System ROMs</th><td>An MSX1 BIOS (32K); an MSX2 or MSX2+ main ROM with its SUB-ROM</td></tr>
+              <tr><th>Disk ROMs</th><td>Plain 16K dumps (not the scrambled DDX, TPX or DMX EPROMs)</td></tr>
+              <tr><th>Any of them</th><td>Inside a <code>.zip</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="trouble" class="chapter">
-        <h2><span>12</span>When something does not work</h2>
+        <h2><span>13</span>When something does not work</h2>
         <ul class="facts">
           <li><b>A game shows a black screen or restarts:</b> try another bank scheme in the menu under its slot.</li>
           <li><b>No sound:</b> click the page once; check the volume, and that Speed is Normal.</li>

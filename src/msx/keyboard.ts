@@ -108,10 +108,23 @@ const TABLE_MODS: [shift: boolean, graph: boolean, code: boolean][] = [
 /** Which table wins when a character is in several: plain, shift, code, then graph. */
 const PREFERENCE = [0, 1, 4, 5, 2, 3];
 
+/** The character an MSX code shows in a character set, for drawing keys; '' if none. */
+export function msxChar(code: number, charset: Charset = 'international'): string {
+  if (charset === 'brazil-1.0') {
+    for (const [ch, codes] of Object.entries(BRAZIL_10)) if (codes[0] === code) return ch;
+  }
+  if (code >= 0x20 && code < 0x7f) return String.fromCharCode(code);
+  if (code >= 0x80 && code < 0xc0) return HIGH[code - 0x80];
+  return '';
+}
+
+/** What is printed on a key: plain, with SHIFT, and with CODE (accents on Brazilian MSXs). */
+export interface KeyLegend { plain: string; shift: string; code: string }
+
 export class KeyTable {
   private byCode = new Map<number, Combo>();
 
-  constructor(tables: Uint8Array, readonly charset: Charset = 'international') {
+  constructor(private readonly tables: Uint8Array, readonly charset: Charset = 'international') {
     for (const t of PREFERENCE) {
       const [shift, graph, code] = TABLE_MODS[t];
       for (let k = 0; k < 48; k++) {
@@ -120,6 +133,13 @@ export class KeyTable {
         this.byCode.set(v, { row: k >> 3, bit: k & 7, shift, graph, code });
       }
     }
+  }
+
+  /** The legend of the key at matrix row (0-5) and bit. */
+  legend(row: number, bit: number): KeyLegend {
+    const k = row * 8 + bit;
+    const ch = (t: number) => msxChar(this.tables[t * 48 + k] ?? 0, this.charset);
+    return { plain: ch(0), shift: ch(1), code: ch(4) };
   }
 
   /** Finds the key tables in a BIOS ROM: "0123456789" opening the plain one, a/A where row 2 ends. */

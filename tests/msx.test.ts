@@ -341,6 +341,12 @@ describe('typing by character', () => {
     expect(KeyTable.find(new Uint8Array(0x8000))).toBeNull();
   });
 
+  it('tells what is printed on each key, for the keyboard on the page', () => {
+    expect(table.legend(0, 2)).toEqual({ plain: '2', shift: '@', code: expect.any(String) });
+    expect(table.legend(2, 6).plain).toBe('a');
+    expect(table.legend(1, 7)).toMatchObject({ plain: ';', shift: ':' });
+  });
+
   it('knows the Expert 1.0 character set by the tilde drawn over 84h', () => {
     const rom = new Uint8Array(0x8000);
     rom.set([0x00, 0x10], 4); // CGTABL = 1000h

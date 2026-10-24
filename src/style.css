@@ -394,6 +394,59 @@ body {
   .tape-keys { grid-column: 1 / -1; justify-content: flex-end; }
 }
 
+/* ---- the keyboard on the page (src/ui/msx-keyboard.ts) ----------------- */
+
+.kbd-wrap { width: min(100%, 760px); display: flex; flex-direction: column; gap: 8px; }
+.kbd-toggle { align-self: flex-start; }
+.kbd {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  border-radius: 12px;
+  background: linear-gradient(#2a2c35, #1a1b22);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  user-select: none;
+  touch-action: none;
+}
+.kbd[hidden] { display: none; }
+.kbd-row { display: flex; gap: 5px; }
+.kbd-row:first-child { margin-bottom: 4px; }
+.kbd-key {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 42px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #3d404c, #2b2d36);
+  box-shadow: 0 3px 0 #0e0f13, inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #eceff7;
+  font: 600 13px var(--mono);
+  cursor: pointer;
+}
+.kbd-key .shift { grid-column: 1 / -1; grid-row: 1; font-size: 10px; color: #b9bfd3; text-align: left; line-height: 1; }
+.kbd-key .main { grid-column: 1; grid-row: 2; text-align: left; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kbd-key .shift:empty + .main { grid-row: 1 / -1; }
+.kbd-key .code { grid-column: 2; grid-row: 2; font-size: 10px; color: var(--accent); }
+.kbd-key.fn, .kbd-key.mod, .kbd-key.arrow { font-size: 10px; background: linear-gradient(180deg, #5a5d68, #44464f); }
+.kbd-key.fn { min-height: 30px; }
+.kbd-key.stop { color: #ff9a9a; }
+.kbd-key.space { background: linear-gradient(180deg, #4a4d58, #383a43); }
+.kbd-key:active, .kbd-key.down { transform: translateY(2px); box-shadow: 0 1px 0 #0e0f13; }
+.kbd-key.latched { background: linear-gradient(180deg, #5455ed, #3b3cb8); }
+@media (max-width: 560px) {
+  .kbd { padding: 6px; gap: 3px; }
+  .kbd-row { gap: 3px; }
+  .kbd-key { min-height: 40px; padding: 2px; font-size: 11px; }
+  .kbd-key .shift, .kbd-key .code { display: none; }
+  .kbd-key .main { grid-row: 1 / -1; text-align: center; }
+}
+
 /* ---- the shelf of cartridges loaded before ----------------------------- */
 
 .shelf { width: min(100%, 760px); }

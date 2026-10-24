@@ -23,6 +23,7 @@ import { audioContext } from './ui/audio';
 import { askConfirm } from './ui/confirm';
 import { waitForPower, warmUp } from './ui/power';
 import { SoundOut } from './ui/sound-out';
+import { MsxKeyboard } from './ui/msx-keyboard';
 import { loadAllBios, loadCart, loadShelf, loadTape, removeBios, saveBios, saveCart, saveTape, shelve, StoredCart, unshelve } from './ui/store';
 
 const SAMPLE_RATE = 44100;
@@ -47,11 +48,13 @@ interface Settings {
   bios: string;
   /** Keys type the character on the PC key (through the BIOS's table), or stay where they are. */
   keymap: 'char' | 'position';
+  /** The on-screen keyboard is open. */
+  keyboard: boolean;
 }
 
 const DEFAULTS: Settings = {
   region: 'ntsc', speed: 1, smooth: false, scanlines: true, curve: true,
-  flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios', keymap: 'char',
+  flicker: false, humbar: false, volume: 70, autoPower: false, bios: 'cbios', keymap: 'char', keyboard: false,
 };
 
 function loadSettings(): Settings {
@@ -115,10 +118,16 @@ async function start(): Promise<void> {
     }
   };
   const keys = new KeyInput(msx.ppi);
+  // The keyboard on the page, with the legends of the BIOS in use.
+  const screenKeys = new MsxKeyboard($('kbd'), {
+    key: (row, bit, down) => msx.ppi.key(row, bit, down),
+    running: () => running,
+  });
   keys.inject = (code) => msx.type(String.fromCharCode(code));
   /** Reads the key table of the BIOS in use (when typing by character). */
   const useKeyTable = () => {
     const rom = currentBios().main;
+    screenKeys.draw(KeyTable.find(rom));
     keys.table = settings.keymap === 'char' ? KeyTable.find(rom) : null;
     const note = document.getElementById('keymap-note');
     if (note) {
@@ -610,6 +619,14 @@ async function start(): Promise<void> {
     if (keys.up(e.code)) e.preventDefault();
   });
   window.addEventListener('blur', () => keys.releaseAll());
+  const kbdToggle = $('kbd-toggle');
+  const showKbd = () => {
+    $('kbd').hidden = !settings.keyboard;
+    kbdToggle.setAttribute('aria-expanded', String(settings.keyboard));
+  };
+  kbdToggle.addEventListener('click', () => { settings.keyboard = !settings.keyboard; save(); showKbd(); });
+  showKbd();
+
   // ---- the DeepSeek key, for the AI board -----------------------------------
 
   const keyInput = $<HTMLInputElement>('deepseek-key');

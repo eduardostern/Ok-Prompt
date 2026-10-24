@@ -90,3 +90,34 @@ export class Slots {
     for (let p = 0; p < 4; p++) this.page[p] = this.devices[this.slotOf(p)];
   }
 }
+
+/**
+ * An expanded slot (MSX2): four subslots behind one primary slot. Its own
+ * register at FFFFh picks the subslot for each 16K page, as the primary
+ * register does for slots; it is reachable while this slot is the one in
+ * page 3, and reads back inverted (how the BIOS tells expanded slots).
+ */
+export class ExpandedSlot implements SlotDevice {
+  readonly subs: SlotDevice[] = [EMPTY, EMPTY, EMPTY, EMPTY];
+  reg = 0;
+
+  insert(n: number, device: SlotDevice): this {
+    this.subs[n] = device;
+    return this;
+  }
+
+  /** The subslot page `p` shows. */
+  subOf(p: number): number {
+    return (this.reg >> (p * 2)) & 3;
+  }
+
+  read(addr: number): number {
+    if (addr === 0xffff) return ~this.reg & 0xff;
+    return this.subs[this.subOf(addr >> 14)].read(addr);
+  }
+
+  write(addr: number, value: number): void {
+    if (addr === 0xffff) { this.reg = value & 0xff; return; }
+    this.subs[this.subOf(addr >> 14)].write(addr, value);
+  }
+}

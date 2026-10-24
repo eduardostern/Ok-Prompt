@@ -24,7 +24,11 @@ import { Z80 } from '../z80';
 import { Cartridge } from './cartridge';
 import { Ppi } from './ppi';
 import { Psg } from './psg';
-import { Ram, Rom, Slots, EMPTY } from './slots';
+import { MapperRam } from './mapper';
+import { Rtc } from './rtc';
+import { ExpandedSlot, Ram, Rom, Slots, EMPTY } from './slots';
+import { V9938 } from './v9938';
+import type { VideoChip } from './video';
 import { Tape } from './tape';
 import { Vdp } from './vdp';
 
@@ -42,6 +46,16 @@ export interface Bios {
   main: Uint8Array;
   /** C-BIOS's logo ROM, at 8000h in slot 0. */
   logo?: Uint8Array;
+  /** The MSX2 SUB-ROM (16K, starts with "CD"), in slot 3-0. */
+  sub?: Uint8Array;
+}
+
+export type Model = 'msx1' | 'msx2' | 'msx2+';
+
+/** The machine a main ROM is for: its byte 002Dh (0 MSX1, 1 MSX2, 2 MSX2+, 3 turbo R). */
+export function biosModel(main: Uint8Array): Model {
+  const v = main[0x2d];
+  return v === 1 ? 'msx2' : v >= 2 && v <= 3 ? 'msx2+' : 'msx1';
 }
 
 /** Throws unless `rom` looks like an MSX1 BIOS: 16K-64K, starting with DI. */
@@ -79,9 +93,16 @@ export class Msx {
   readonly cpu = new Z80();
   readonly slots = new Slots();
   readonly ppi = new Ppi(this.slots);
-  readonly vdp = new Vdp();
+  /** The TMS9918A (MSX1) or the V9938/V9958 (MSX2, MSX2+): set by the BIOS. */
+  vdp: VideoChip = new Vdp();
   readonly psg: Psg;
+  /** The MSX1's 64K in slot 3. */
   readonly ram = new Ram();
+  /** The MSX2's memory mapper (512K in slot 3-2) and clock. */
+  readonly mapper = new MapperRam(512);
+  readonly rtc = new Rtc();
+  model: Model = 'msx1';
+  private expanded = new ExpandedSlot();
   readonly cartridges: (Cartridge | null)[] = [null, null];
   region: Region = 'ntsc';
   /** Frames run since power-on. */
@@ -108,7 +129,6 @@ export class Msx {
     this.sampleRate = sampleRate;
     this.psg = new Psg(CPU_CLOCK, sampleRate);
     this.setBios(bios);
-    this.slots.insert(3, this.ram);
 
     const cpu = this.cpu;
     cpu.read = (a) => this.slots.read(a);
@@ -130,6 +150,20 @@ export class Msx {
     const rom = new Rom().place(0x0000, bios.main);
     if (bios.logo) rom.place(0x8000, bios.logo);
     this.slots.insert(0, rom);
+    const model = biosModel(bios.main);
+    if (model !== this.model) {
+      this.model = model;
+      this.vdp = model === 'msx1' ? new Vdp() : new V9938(model === 'msx2+', () => this.cpu.cycles);
+    }
+    if (model === 'msx1') {
+      this.slots.insert(3, this.ram);
+    } else {
+      // C-BIOS's MSX2 layout: slot 3 expanded, SUB-ROM in 3-0, the mapper in 3-2.
+      this.expanded = new ExpandedSlot()
+        .insert(0, bios.sub ? new Rom().place(0x0000, bios.sub) : EMPTY)
+        .insert(2, this.mapper);
+      this.slots.insert(3, this.expanded);
+    }
     const m = bios.main;
     const body = (at: number) => (m[at] === 0xc3 ? m[at + 1] | (m[at + 2] << 8) : -1);
     this.keyBodies = [body(CHSNS), body(CHGET)].filter((a) => a >= 0);
@@ -165,6 +199,8 @@ export class Msx {
     this.ppi.reset();
     this.vdp.reset();
     this.psg.reset();
+    this.mapper.reset();
+    this.expanded.reg = 0;
     for (const c of this.cartridges) c?.reset();
     this.tape?.rewind();
     this.toType = '';
@@ -175,6 +211,7 @@ export class Msx {
   /** Power off and on: RAM too is cleared. */
   powerCycle(): void {
     this.ram.data.fill(0);
+    this.mapper.data.fill(0);
     this.reset();
   }
 
@@ -182,7 +219,11 @@ export class Msx {
   runFrame(): void {
     const cpu = this.cpu;
     const vdp = this.vdp;
+    vdp.frameStart();
+    // On an MSX2 the BIOS picks 50 or 60 Hz in the VDP (R#9 NT).
+    if (vdp instanceof V9938) this.region = vdp.isNtsc ? 'ntsc' : 'pal';
     const lines = REGIONS[this.region].lines;
+    const shown = vdp.displayLines;
     let end = 0;
     for (let line = 0; line < lines; line++) {
       end += CYCLES_PER_LINE;
@@ -193,8 +234,9 @@ export class Msx {
         if (((pc <= STMOTR && pc >= CHSNS) || this.keyBodies.includes(pc)) && this.trap(pc)) continue;
         cpu.step();
       }
-      if (line < 192) vdp.renderLine(line);
-      else if (line === 192) vdp.vblank();
+      if (line < shown) vdp.renderLine(line);
+      else if (line === shown) vdp.vblank();
+      vdp.endLine(line);
     }
     this.psg.advanceTo(end);
     for (const c of this.cartridges) c?.scc?.advanceTo(end);
@@ -208,8 +250,9 @@ export class Msx {
 
   /** Moves as much pending text as fits into the BIOS keyboard buffer. */
   private fillKeyBuffer(): void {
-    const ram = this.ram.data;
-    const word = (a: number) => ram[a] | (ram[a + 1] << 8);
+    // Through the CPU's view of page 3, which is RAM (or the mapper) by then.
+    const ram = { get: (a: number) => this.slots.read(a), set: (a: number, v: number) => this.slots.write(a, v) };
+    const word = (a: number) => ram.get(a) | (ram.get(a + 1) << 8);
     let put = word(PUTPNT);
     const get = word(GETPNT);
     if (put < KEYBUF || put >= KEYBUF_END || get < KEYBUF || get >= KEYBUF_END) return; // not set up yet
@@ -217,12 +260,12 @@ export class Msx {
     while (n < this.toType.length) {
       const next = put + 1 === KEYBUF_END ? KEYBUF : put + 1;
       if (next === get) break; // full
-      ram[put] = this.toType.charCodeAt(n++) & 0xff;
+      ram.set(put, this.toType.charCodeAt(n++) & 0xff);
       put = next;
     }
     this.toType = this.toType.slice(n);
-    ram[PUTPNT] = put & 0xff;
-    ram[PUTPNT + 1] = put >> 8;
+    ram.set(PUTPNT, put & 0xff);
+    ram.set(PUTPNT + 1, put >> 8);
   }
 
   /**
@@ -285,6 +328,10 @@ export class Msx {
       case 0xa2: return this.psg.read();
       case 0xa8: case 0xa9: case 0xaa: case 0xab: return this.ppi.in(port);
     }
+    if (this.model !== 'msx1') {
+      if (port >= 0xfc) return this.mapper.getPage(port - 0xfc);
+      if (port === 0xb5) return this.rtc.read();
+    }
     for (const c of this.cartridges) {
       const v = c?.ioIn(port) ?? -1;
       if (v >= 0) return v;
@@ -299,6 +346,14 @@ export class Msx {
       case 0xa0: this.psg.select(value); break;
       case 0xa1: this.psg.write(value, this.cpu.cycles); break;
       case 0xa8: case 0xa9: case 0xaa: case 0xab: this.ppi.out(port, value); break;
+      case 0x9a: this.vdp.writePalette(value); break;
+      case 0x9b: this.vdp.writeIndirect(value); break;
+      case 0xb4: if (this.model !== 'msx1') this.rtc.select(value); break;
+      case 0xb5: if (this.model !== 'msx1') this.rtc.write(value); break;
+      case 0xfc: case 0xfd: case 0xfe: case 0xff:
+        if (this.model !== 'msx1') { this.mapper.setPage(port - 0xfc, value); break; }
+        for (const c of this.cartridges) if (c?.ioOut(port, value)) break;
+        break;
       default:
         for (const c of this.cartridges) if (c?.ioOut(port, value)) break;
     }

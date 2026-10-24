@@ -38,12 +38,17 @@ export const HEIGHT = 192 + 2 * BORDER_Y;
 /** Colours packed for a little-endian Uint32Array over RGBA bytes. */
 const RGBA = new Uint32Array(PALETTE.map(([r, g, b]) => (255 << 24) | (b << 16) | (g << 8) | r));
 
-export class Vdp {
+import type { VideoChip } from './video';
+
+export class Vdp implements VideoChip {
   readonly vram = new Uint8Array(0x4000);
   readonly regs = new Uint8Array(8);
   status = 0;
   /** The frame as RGBA pixels, WIDTH x HEIGHT. */
   readonly frame = new Uint32Array(WIDTH * HEIGHT);
+  readonly width = WIDTH;
+  readonly height = HEIGHT;
+  readonly displayLines = 192;
 
   private addr = 0;
   private latched = false;
@@ -63,6 +68,18 @@ export class Vdp {
     this.readAhead = 0;
     this.frame.fill(RGBA[1]);
   }
+
+  textColumns(): number {
+    const r1 = this.regs[1];
+    if (r1 & 0x10) return 40;
+    return r1 & 0x08 || this.regs[0] & 0x02 ? 0 : 32;
+  }
+
+  // The MSX1 chip has no palette, no indirect registers, no line interrupt.
+  writePalette(): void {}
+  writeIndirect(): void {}
+  frameStart(): void {}
+  endLine(): void {}
 
   /** The interrupt line: F set and interrupts enabled. */
   get irq(): boolean {

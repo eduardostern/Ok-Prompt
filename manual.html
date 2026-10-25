@@ -12,7 +12,7 @@
     <div class="doc">
       <nav class="doc-nav">
         <a href="./" class="brand-sm"><span class="ok">Ok</span>-Prompt</a>
-        <span class="doc-links"><a href="./history.html" class="doc-back">History</a> <a href="./" class="doc-back">← Back to the MSX</a></span>
+        <span class="doc-links"><a href="./pt/manual.html" class="doc-back" hreflang="pt-BR" lang="pt-BR">Português</a> <a href="./history.html" class="doc-back">History</a> <a href="./" class="doc-back">← Back to the MSX</a></span>
       </nav>
 
       <header class="doc-head">
@@ -111,6 +111,26 @@
           <li>Big cartridges switch banks of memory, and makers did it differently. Ok-Prompt guesses the scheme from the code; if a game does not start, pick another in the menu under its slot: <i>Konami</i>, <i>Konami SCC</i>, <i>ASCII 8K</i>, <i>ASCII 16K</i>.</li>
           <li><b>Games that save</b> (role-playing games with battery-backed memory) need <i>ASCII 8K + 8K battery RAM</i> or <i>ASCII 16K + 2K battery RAM</i> in that menu. Their saves stay in the browser and come back with the cartridge.</li>
         </ul>
+        <h3>Loading from a link</h3>
+        <p>
+          A link can bring the files with it, so a site can say "play this in your browser":
+        </p>
+        <pre>https://ok-prompt.stern.workers.dev/?rom=https://example.org/game.rom</pre>
+        <div class="table-wrap">
+          <table class="compare">
+            <tbody>
+              <tr><th><code>rom=</code>, <code>rom2=</code></th><td>A cartridge for slot 1 or 2 (a <code>.zip</code> works)</td></tr>
+              <tr><th><code>tape=</code></th><td>A <code>.cas</code> or <code>.tsx</code> for the tape deck</td></tr>
+              <tr><th><code>disk=</code>, <code>diskb=</code></th><td>A <code>.dsk</code> for drive A or B</td></tr>
+              <tr><th><code>bios=</code></th><td><code>cbios</code>, <code>cbios2</code> or <code>cbios2p</code> (MSX1, MSX2, MSX2+), or the file name of a BIOS you loaded</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted">
+          Join them with <code>&amp;</code>. Your browser fetches each file from its site, which has to allow it
+          (GitHub and archive.org do, many ROM archives do not); if not, the slot says so, and you can download the
+          file and drop it in instead.
+        </p>
       </section>
 
       <section id="keyboard" class="chapter">
@@ -192,7 +212,8 @@
             <h3>Setting it up</h3>
             <ol class="facts">
               <li>Under <b>Disk drive</b> in the Machine panel, click <b>Load disk ROM…</b> and pick the ROM (16K, or a zip with it). The MSX restarts with a drive.</li>
-              <li>A drive appears under the tape deck. Drop a <code>.dsk</code> on the page or click the drive; <b>＋ Blank</b> inserts an empty 720K disk.</li>
+              <li>Two drives appear under the tape deck, <b>A:</b> and <b>B:</b>. Drop a <code>.dsk</code> on the page (it goes in A:) or click a drive; <b>＋ Blank</b> inserts an empty 720K disk. On the shelf, a disk's <b>B</b> puts it in drive B.</li>
+              <li>Games on several disks ask for the next one: eject and put it in drive A:, from the shelf or the drive's button. Copying between disks works across A: and B:.</li>
               <li>An MSX1 has no clock, so the disk ROM asks for the date as it starts, as a real one did. Type it the way it asks (some want day-month-year, some month-day-year), or just press Enter.</li>
               <li>You get Disk BASIC. A disk with <code>MSXDOS.SYS</code> and <code>COMMAND.COM</code> on it boots MSX-DOS instead.</li>
             </ol>

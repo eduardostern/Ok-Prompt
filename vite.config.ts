@@ -14,6 +14,8 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         manual: resolve(__dirname, 'manual.html'),
         history: resolve(__dirname, 'history.html'),
+        manualPt: resolve(__dirname, 'pt/manual.html'),
+        historyPt: resolve(__dirname, 'pt/history.html'),
       },
     },
   },

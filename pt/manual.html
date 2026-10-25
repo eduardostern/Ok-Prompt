@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Manual · Ok-Prompt</title>
+    <meta name="description" content="Como usar o Ok-Prompt: máquinas e BIOS, cartuchos, teclado, fitas cassete, drive de disquete, som FM, estados salvos, impressora, mouse e modem." />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="history">
+    <div class="doc">
+      <nav class="doc-nav">
+        <a href="../" class="brand-sm"><span class="ok">Ok</span>-Prompt</a>
+        <span class="doc-links"><a href="./history.html" class="doc-back">História</a> <a href="../manual.html" class="doc-back" hreflang="en" lang="en">English</a> <a href="../" class="doc-back">← Voltar ao MSX</a></span>
+      </nav>
+
+      <header class="doc-head">
+        <span class="kicker">Manual do usuário</span>
+        <h1>Usando o Ok-Prompt</h1>
+        <p class="lede">
+          Um MSX no seu navegador: MSX1, MSX2 e MSX2+, com cartuchos, gravador
+          de fita cassete, drive de disquete, som FM e modem. Tudo o que você
+          carrega fica guardado neste navegador para a próxima vez.
+        </p>
+        <ol class="toc">
+          <li><a href="#start">Primeiros passos</a></li>
+          <li><a href="#machines">Escolhendo a máquina</a></li>
+          <li><a href="#cartridges">Cartuchos e a estante</a></li>
+          <li><a href="#keyboard">Teclado, colar texto e joysticks</a></li>
+          <li><a href="#tapes">Fitas cassete</a></li>
+          <li><a href="#disks">O drive de disquete</a></li>
+          <li><a href="#sound">Som e música FM</a></li>
+          <li><a href="#states">Estados salvos</a></li>
+          <li><a href="#printer">A impressora</a></li>
+          <li><a href="#modem">O modem e a BBS de IA</a></li>
+          <li><a href="#storage">O que o navegador guarda</a></li>
+          <li><a href="#software">Onde encontrar software</a></li>
+          <li><a href="#trouble">Quando algo não funciona</a></li>
+        </ol>
+      </header>
+
+      <section id="start" class="chapter">
+        <h2><span>1</span>Primeiros passos</h2>
+        <div class="cols">
+          <div>
+            <ol class="facts">
+              <li>Abra a página e aperte uma tecla ou clique na tela: o MSX liga (os navegadores só liberam o som depois disso). Marque <b>Power on by itself</b> (ligar sozinho) no painel Machine para pular esta etapa da próxima vez.</li>
+              <li>A máquina embutida é o <b>C-BIOS</b>, uma ROM de sistema MSX livre. Ela inicia cartuchos, mas não tem BASIC; por isso, com os slots vazios, aparece <i>No cartridge found</i>.</li>
+              <li>Solte um jogo (<code>.rom</code>, ou um <code>.zip</code> com um dentro) em qualquer lugar da página. Ele vai para o slot 1 e o MSX reinicia com ele.</li>
+              <li>Para ter o MSX BASIC, carregue a ROM de uma máquina de verdade (próximo capítulo).</li>
+            </ol>
+          </div>
+          <aside class="callout">
+            <h3>Os painéis</h3>
+            <ul>
+              <li><b>Machine</b> (máquina, à esquerda): liga/desliga, reset, estados salvos, região, velocidade, a ROM de sistema e a ROM do drive de disquete.</li>
+              <li><b>Centro</b>: o monitor, dois slots de cartucho, o gravador de fita, o drive de disquete, o teclado na tela e a estante.</li>
+              <li><b>Settings</b> (ajustes, à direita): vídeo, som e FM, teclado e porta de joystick, colar texto, impressora, modem.</li>
+            </ul>
+          </aside>
+        </div>
+        <p class="muted">
+          <b>Speed</b> (velocidade) roda o MSX a 2x ou 4x (o som fica mudo nesse caso). <b>Region</b> (região) escolhe 60 Hz (NTSC, como no Japão
+          e no Brasil) ou 50 Hz (PAL, Europa) num MSX1; a BIOS de um MSX2 define isso sozinha.
+        </p>
+      </section>
+
+      <section id="machines" class="chapter">
+        <h2><span>2</span>Escolhendo a máquina</h2>
+        <p class="intro">
+          O menu <b>System ROM</b> (ROM de sistema) decide qual computador você tem. As três máquinas C-BIOS já vêm embutidas;
+          as ROMs de máquinas reais têm direitos autorais, então você carrega os dumps das suas, e eles ficam no seu navegador.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Você carrega</th><th>Você ganha</th><th>Arquivos</th></tr></thead>
+            <tbody>
+              <tr><th>Nada</th><td>C-BIOS MSX1, MSX2 ou MSX2+: roda cartuchos, sem BASIC</td><td>Embutido</td></tr>
+              <tr><th>Uma BIOS de MSX1</th><td>MSX BASIC: Gradiente Expert 1.0 ou 1.1, Sharp Hotbit, qualquer MSX1</td><td>Um arquivo de 32K, como <code>expert_1.1_basic-bios1.rom</code></td></tr>
+              <tr><th>Uma BIOS de MSX2</th><td>MSX BASIC 2.0, 80 colunas, SCREEN 5-8</td><td>ROM principal e SUB-ROM juntas (dois arquivos, ou um zip)</td></tr>
+              <tr><th>O kit MSX2+ brasileiro</th><td>Seu Expert ou Hotbit como MSX2+: BASIC 3.0, o logotipo do MSX2+, 512K e MSX-MUSIC, se a SUB-ROM tiver</td><td>Uma ROM <code>main_2p_…</code> e uma ROM <code>sub_2p_…</code> juntas</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cols">
+          <div>
+            <h3>Carregando uma BIOS</h3>
+            <ol class="facts">
+              <li>Clique em <b>Load BIOS…</b> (carregar BIOS), embaixo de System ROM.</li>
+              <li>Escolha o arquivo; para um MSX2 ou MSX2+, os dois arquivos de uma vez (segure ⌘ ou Ctrl para selecionar dois) ou um zip com ambos.</li>
+              <li>Ela entra no menu System ROM e o MSX reinicia com ela. Troque de máquina pelo menu quando quiser; <b>Remove</b> (remover) esquece a que estiver selecionada.</li>
+            </ol>
+          </div>
+          <aside class="callout">
+            <h3>O kit MSX2+, passo a passo</h3>
+            <ul>
+              <li>ROM principal: <code>main_2p_expert_com_f4.rom</code> para um Expert, <code>main_2p_hotbit_com_f4.rom</code> para um Hotbit (a diferença está no teclado).</li>
+              <li>SUB-ROM: uma <code>com_rtc</code> (o Ok-Prompt tem o chip de relógio). A <code>com_fm</code> traz o MSX-MUSIC e seu FM-BASIC (<code>CALL MUSIC</code>, <code>PLAY #2</code>); <code>logo1</code> ou <code>logo2</code> é o logotipo da abertura.</li>
+              <li>Na primeira vez, o BASIC entra em SCREEN 1, porque a memória de ajustes do relógio está vazia. Digite <code>SCREEN 0:WIDTH 80:SET SCREEN</code> e ele passa a lembrar das 80 colunas.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section id="cartridges" class="chapter">
+        <h2><span>3</span>Cartuchos e a estante</h2>
+        <ul class="facts">
+          <li>Clique num slot ou solte um arquivo na página para carregar um cartucho (<code>.rom</code>, <code>.mx1</code>, <code>.mx2</code>, <code>.bin</code> ou <code>.zip</code>). O <b>⏏</b> tira o cartucho.</li>
+          <li>Todo cartucho, fita e disquete que você carrega vai para a <b>Shelf</b> (estante), embaixo dos slots. Clique num deles para recolocá-lo no slot 1, ou no seu <b>2</b> para o slot 2; o <b>×</b> tira o item da estante.</li>
+          <li>Cartuchos grandes trocam bancos de memória, e cada fabricante fez isso do seu jeito. O Ok-Prompt adivinha o esquema pelo código; se um jogo não iniciar, escolha outro no menu embaixo do slot: <i>Konami</i>, <i>Konami SCC</i>, <i>ASCII 8K</i>, <i>ASCII 16K</i>.</li>
+          <li><b>Jogos que salvam</b> (RPGs com memória mantida por bateria) precisam de <i>ASCII 8K + 8K battery RAM</i> ou <i>ASCII 16K + 2K battery RAM</i> nesse menu. Os saves ficam no navegador e voltam junto com o cartucho.</li>
+        </ul>
+        <h3>Carregando por um link</h3>
+        <p>
+          Um link pode trazer os arquivos junto, e assim um site pode dizer "jogue isto no navegador":
+        </p>
+        <pre>https://ok-prompt.stern.workers.dev/?rom=https://example.org/jogo.rom</pre>
+        <div class="table-wrap">
+          <table class="compare">
+            <tbody>
+              <tr><th><code>rom=</code>, <code>rom2=</code></th><td>Um cartucho para o slot 1 ou 2 (um <code>.zip</code> também serve)</td></tr>
+              <tr><th><code>tape=</code></th><td>Um <code>.cas</code> ou <code>.tsx</code> para o gravador de fita</td></tr>
+              <tr><th><code>disk=</code>, <code>diskb=</code></th><td>Um <code>.dsk</code> para o drive A ou B</td></tr>
+              <tr><th><code>bios=</code></th><td><code>cbios</code>, <code>cbios2</code> ou <code>cbios2p</code> (MSX1, MSX2, MSX2+), ou o nome do arquivo de uma BIOS que você carregou</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted">
+          Junte vários com <code>&amp;</code>. O navegador busca cada arquivo no site dele, que precisa permitir isso
+          (o GitHub e o archive.org permitem, muitos acervos de ROMs não); se não der, o slot avisa, e você pode baixar
+          o arquivo e soltá-lo na página.
+        </p>
+      </section>
+
+      <section id="keyboard" class="chapter">
+        <h2><span>4</span>Teclado, colar texto e joysticks</h2>
+        <div class="cols">
+          <div>
+            <p>
+              As teclas digitam o que está impresso no teclado do seu PC: símbolos e acentos passam pela tabela de teclas
+              da BIOS em uso, então um teclado brasileiro digita <code>ç</code>, <code>ã</code> e <code>"</code> certinho num
+              Expert. Letras, setas e Espaço continuam nas posições do MSX, para os jogos. O ajuste <b>Keyboard</b> (teclado) pode pôr
+              todas as teclas nas posições do MSX.
+            </p>
+            <h3>Teclas que o PC não tem</h3>
+            <div class="table-wrap">
+              <table class="compare">
+                <tbody>
+                  <tr><th>GRAPH</th><td>Alt da esquerda</td></tr>
+                  <tr><th>CODE</th><td>Alt da direita (acentos nos MSX brasileiros)</td></tr>
+                  <tr><th>STOP</th><td>F7 (CTRL+STOP: Ctrl+F7)</td></tr>
+                  <tr><th>SELECT</th><td>F8</td></tr>
+                  <tr><th>F6-F10</th><td>Shift + F1-F5</td></tr>
+                  <tr><th>Teclado numérico</th><td>O teclado numérico do PC</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="callout">
+            <h3>Cole um programa</h3>
+            <ul>
+              <li>Copie uma listagem em BASIC de qualquer lugar e clique em <b>📋 Paste text</b> (colar texto) ou aperte ⌘V (Mac) ou Ctrl+Shift+V na página.</li>
+              <li>Cada linha entra como se fosse digitada, com Enter no fim, e a listagem vira um programa. Depois, <code>RUN</code>.</li>
+            </ul>
+            <h3>Teclado na tela</h3>
+            <ul>
+              <li><b>⌨ Keyboard</b>, embaixo do gravador, mostra um teclado de MSX com as legendas da sua BIOS, para telas sensíveis ao toque. SHIFT, CTRL, GRAPH e CODE ficam pressionadas até a próxima tecla.</li>
+            </ul>
+          </aside>
+        </div>
+        <h3>Joysticks e o mouse</h3>
+        <ul class="facts">
+          <li>As setas e o Espaço funcionam na maioria dos jogos. Um <b>gamepad</b> é o joystick 1: conecte e aperte um botão.</li>
+          <li>A <b>Joystick port 1</b> (porta de joystick 1, em Settings) pode receber um <b>mouse MSX</b>, para programas de desenho. Clique na tela para capturar o ponteiro; Esc devolve. Os botões esquerdo e direito são os do mouse.</li>
+        </ul>
+      </section>
+
+      <section id="tapes" class="chapter">
+        <h2><span>5</span>Fitas cassete</h2>
+        <div class="cols">
+          <div>
+            <ul class="facts">
+              <li>Clique no gravador ou solte um arquivo <code>.cas</code> ou <code>.tsx</code>. O gravador mostra o primeiro arquivo da fita e de que tipo ele é.</li>
+              <li><b>▶ Load</b> (carregar; com uma BIOS que tenha BASIC) reinicia o MSX e digita o comando certo para você. Ou digite você mesmo:
+                <code>BLOAD"CAS:",R</code> (código de máquina), <code>CLOAD</code> e depois <code>RUN</code> (BASIC), <code>RUN"CAS:"</code> (BASIC em texto).</li>
+              <li><b>⏮</b> rebobina; o número ao lado da fita indica quanto já foi tocado.</li>
+              <li><b>＋ Blank</b> (fita virgem) insere uma fita vazia: <code>CSAVE"NAME"</code>, <code>SAVE"CAS:NAME"</code> ou <code>BSAVE"CAS:…</code> gravam nela, e <b>⤓</b> faz o download.</li>
+            </ul>
+          </div>
+          <aside class="callout">
+            <h3>Jogos com carregador próprio</h3>
+            <p>
+              A maioria das fitas carrega pela BIOS, e o Ok-Prompt lê essas na hora. Jogos com carregador próprio
+              (muitas vezes mais rápido) leem o som da fita: enquanto o motor do cassete gira, o gravador toca
+              para eles o sinal da fita, e um <code>.tsx</code> sai com a sua própria temporização original. Eles carregam na
+              velocidade real, então espere como você esperaria em 1986.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="disks" class="chapter">
+        <h2><span>6</span>O drive de disquete</h2>
+        <p class="intro">
+          Um drive precisa da <b>ROM de disco</b> de uma interface de verdade (ela contém o Disk BASIC e o MSX-DOS, que têm
+          direitos autorais). Carregue a sua uma vez e ela fica no navegador. Como funcionavam os drives, e os modelos
+          brasileiros, está na <a href="./history.html#disks">página de história</a>.
+        </p>
+        <div class="cols">
+          <div>
+            <h3>Configurando</h3>
+            <ol class="facts">
+              <li>Em <b>Disk drive</b>, no painel Machine, clique em <b>Load disk ROM…</b> (carregar ROM de disco) e escolha a ROM (16K, ou um zip com ela). O MSX reinicia com um drive.</li>
+              <li>Dois drives aparecem embaixo do gravador de fita, <b>A:</b> e <b>B:</b>. Solte um <code>.dsk</code> na página (ele vai para o A:) ou clique num drive; <b>＋ Blank</b> insere um disquete vazio de 720K. Na estante, o <b>B</b> de um disquete o coloca no drive B.</li>
+              <li>Jogos em vários disquetes pedem o próximo: ejete e coloque-o no drive A:, pela estante ou pelo botão do drive. Copiar entre disquetes funciona entre o A: e o B:.</li>
+              <li>O MSX1 não tem relógio, então a ROM de disco pede a data ao iniciar, como num aparelho de verdade. Digite no formato que ela pedir (umas querem dia-mês-ano, outras mês-dia-ano), ou simplesmente aperte Enter.</li>
+              <li>Você cai no Disk BASIC. Um disquete com <code>MSXDOS.SYS</code> e <code>COMMAND.COM</code> dá boot no MSX-DOS.</li>
+            </ol>
+            <h3>Disk BASIC em cinco comandos</h3>
+            <div class="table-wrap">
+              <table class="compare">
+                <tbody>
+                  <tr><th><code>FILES</code></th><td>Lista o disquete</td></tr>
+                  <tr><th><code>SAVE"NAME"</code></th><td>Salva o programa (<code>LOAD"NAME"</code> e <code>RUN"NAME"</code> trazem de volta)</td></tr>
+                  <tr><th><code>BLOAD"GAME.BIN",R</code></th><td>Carrega e executa código de máquina</td></tr>
+                  <tr><th><code>KILL"NAME.BAS"</code></th><td>Apaga um arquivo</td></tr>
+                  <tr><th><code>CALL FORMAT</code></th><td>Formata o disquete: responda A e depois qualquer tecla</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="callout">
+            <h3>Quais ROMs de disco funcionam</h3>
+            <ul>
+              <li>Qualquer ROM de disco MSX comum: testadas as do Philips VG-8235, Sony HB-3600, Microsol CDX-2 e FastDROM (a versão para CDX-2), no Expert 1.0 e 1.1, no Hotbit, em MSX1 internacionais e no kit MSX2+.</li>
+              <li>Alguns dumps de EPROM de placas brasileiras (DDX, TPX, DMX), como arquivo, não iniciam do jeito que uma ROM de disco inicia, e são recusados. Para esses drives, use o arquivo da CDX-2 ou da FastDROM CDX-2: aqui ele faz o mesmo serviço.</li>
+              <li>A FastDROM é a que deixa mais memória livre.</li>
+            </ul>
+            <h3>Guardando seus disquetes</h3>
+            <ul>
+              <li>Tudo o que o MSX grava fica no navegador. <b>⤓</b> baixa o disquete como <code>.dsk</code>, para guardar ou abrir em outros emuladores.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section id="sound" class="chapter">
+        <h2><span>7</span>Som e música FM</h2>
+        <ul class="facts">
+          <li>O chip de som do próprio MSX (três tons e ruído) sempre toca; os cartuchos Konami com SCC somam seus cinco canais de forma de onda.</li>
+          <li><b>FM sound (MSX-MUSIC)</b> (som FM), no painel Sound, coloca na máquina o chip FM Yamaha YM2413, como no cartucho FM-PAC e nas máquinas MSX2+. Os jogos que o conhecem tocam sua música FM. Mudar essa opção reinicia o MSX.</li>
+          <li>Com a SUB-ROM <code>com_fm</code> do kit MSX2+, o chip já vem embutido, com seu FM-BASIC: <code>CALL MUSIC</code> e depois <code>PLAY #2,"CDEFGAB"</code>.</li>
+          <li>O controle de volume fica no painel Sound; o som começa depois do primeiro clique ou tecla na página.</li>
+        </ul>
+      </section>
+
+      <section id="states" class="chapter">
+        <h2><span>8</span>Estados salvos</h2>
+        <ul class="facts">
+          <li>As quatro posições em <b>Save states</b> (estados salvos, no painel Machine) guardam cada uma a máquina inteira: memória, chips, cartuchos, a fita e o disquete onde estiverem.</li>
+          <li><b>Save</b> (salvar) guarda o MSX como está agora; salvar por cima de uma posição ocupada pede confirmação antes. <b>Load</b> (carregar) traz tudo de volta, BIOS, ROM de disco e cartuchos incluídos, exatamente onde estava.</li>
+          <li>Um estado precisa que sua BIOS e sua ROM de disco continuem carregadas no navegador. Os estados ficam só neste navegador.</li>
+        </ul>
+      </section>
+
+      <section id="printer" class="chapter">
+        <h2><span>9</span>A impressora</h2>
+        <p>
+          <code>LPRINT "Hello"</code> e <code>LLIST</code> imprimem no papel do painel <b>Printer</b> (impressora).
+          <b>⤓ Download</b> salva a impressão como arquivo de texto; <b>Clear</b> (limpar) começa uma página nova.
+        </p>
+      </section>
+
+      <section id="modem" class="chapter">
+        <h2><span>10</span>O modem e a BBS de IA</h2>
+        <div class="cols">
+          <div>
+            <ol class="facts">
+              <li>Pegue o <b>☎ Ok-Modem</b> na estante e coloque num slot.</li>
+              <li>Com MSX BASIC, digite <code>CALL TERM</code>; com o C-BIOS, o terminal inicia sozinho. Num MSX2 ele mostra 80 colunas.</li>
+              <li><code>ATI</code> lista as BBSes, <code>ATDT 1</code> liga para a primeira. Você ouve o tom de discagem e o handshake.</li>
+              <li><code>ATDT DEEPSEEK</code> liga para a BBS de IA: converse com o sysop ou com o BOFH, ou encomende um programa em BASIC; ele chega na sua fita para <code>RUN"CAS:"</code>.</li>
+              <li>CTRL+STOP (Ctrl+F7) volta ao BASIC.</li>
+            </ol>
+          </div>
+          <aside class="callout">
+            <h3>A chave da DeepSeek</h3>
+            <p>
+              A BBS de IA usa a sua própria chave de API da DeepSeek: cole-a no painel Modem. Ela fica neste navegador
+              e só vai para a DeepSeek. O painel explica como conseguir uma.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="storage" class="chapter">
+        <h2><span>11</span>O que o navegador guarda</h2>
+        <p>
+          Suas BIOS e ROMs de disco, os cartuchos nos slots e na estante, a fita, o disquete, os saves por bateria,
+          os estados salvos, os ajustes e a memória do relógio do MSX2 ficam neste navegador, neste computador. Nada é
+          enviado para fora. Apagar os dados do site (ou usar uma janela anônima) começa tudo do zero, então baixe as fitas e os
+          disquetes que quiser guardar.
+        </p>
+      </section>
+
+      <section id="software" class="chapter">
+        <h2><span>12</span>Onde encontrar software</h2>
+        <p class="intro">
+          A maior parte do software de MSX, e toda BIOS e ROM de disco de máquina real, ainda tem direitos autorais. O Ok-Prompt
+          não traz nada disso: o que você carrega é assunto seu. As fontes mais limpas vêm primeiro.
+        </p>
+        <div class="cols">
+          <div>
+            <h3>Livres ou legais</h3>
+            <ul class="facts">
+              <li><a href="https://cbios.sourceforge.net/">C-BIOS</a>: a BIOS livre de MSX1, MSX2 e MSX2+, que já vem embutida.</li>
+              <li><a href="https://www.msxdev.org/">MSXdev</a>: o concurso anual de jogos novos para MSX. Os participantes são homebrew, em geral de download gratuito.</li>
+              <li><a href="https://www.amusement-center.com/">Project EGG</a>: relançamentos oficiais de jogos de computadores japoneses, MSX entre eles (pagos, a maioria em japonês).</li>
+              <li><b>Sua própria máquina e seus cartuchos</b>: fazer o dump do que é seu é o caminho mais seguro. O <a href="https://openmsx.org/manual/setup.html">guia de configuração do openMSX</a> explica ROMs de sistema e dumps.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Acervos da comunidade</h3>
+            <ul class="facts">
+              <li><a href="https://www.file-hunter.com/">File-Hunter</a>: o maior acervo de MSX: jogos, fitas, disquetes, ROMs de sistema; algumas editoras liberaram seus títulos lá.</li>
+              <li><a href="https://www.msxpro.com/">MSXPro</a>: brasileiro, forte em máquinas brasileiras, versões de BIOS e interfaces de disco.</li>
+              <li><a href="https://www.msx.org/">MSX Resource Center</a>: notícias, a wiki do MSX e downloads de homebrew e ferramentas.</li>
+              <li><a href="https://www.generation-msx.nl/">Generation MSX</a>: um catálogo de todos os lançamentos de MSX (o que existe, quem fez, que máquina exige), sem downloads.</li>
+            </ul>
+            <p class="muted">Esses acervos também hospedam arquivos com direitos autorais; para muitos títulos, isso é uma zona cinzenta.</p>
+          </div>
+        </div>
+        <h3>O que o Ok-Prompt lê</h3>
+        <div class="table-wrap">
+          <table class="compare">
+            <tbody>
+              <tr><th>Cartuchos</th><td><code>.rom</code>, <code>.mx1</code>, <code>.mx2</code>, <code>.bin</code></td></tr>
+              <tr><th>Fitas</th><td><code>.cas</code>, <code>.tsx</code></td></tr>
+              <tr><th>Disquetes</th><td><code>.dsk</code> (360K ou 720K)</td></tr>
+              <tr><th>ROMs de sistema</th><td>Uma BIOS de MSX1 (32K); a ROM principal de um MSX2 ou MSX2+ com sua SUB-ROM</td></tr>
+              <tr><th>ROMs de disco</th><td>Dumps comuns de 16K (não as EPROMs das placas DDX, TPX ou DMX)</td></tr>
+              <tr><th>Qualquer um deles</th><td>Dentro de um <code>.zip</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="trouble" class="chapter">
+        <h2><span>13</span>Quando algo não funciona</h2>
+        <ul class="facts">
+          <li><b>Um jogo mostra tela preta ou reinicia:</b> tente outro esquema de bancos no menu embaixo do slot.</li>
+          <li><b>Sem som:</b> clique uma vez na página; confira o volume e se Speed está em Normal.</li>
+          <li><b>Um jogo em fita não carrega com ▶ Load:</b> ele precisa de uma BIOS com BASIC; o C-BIOS sozinho não carrega fitas.</li>
+          <li><b>A ROM de disco é recusada:</b> provavelmente é um dump de EPROM de placa que não é lido como ROM de disco; use uma comum (veja <a href="#disks">O drive de disquete</a>).</li>
+          <li><b>O BASIC responde <i>Invalid date</i> ao iniciar:</b> a ROM de disco está pedindo a data; digite na ordem que ela mostra, ou aperte Enter.</li>
+          <li><b>O MSX2+ entra em 32 colunas:</b> <code>SCREEN 0:WIDTH 80:SET SCREEN</code>.</li>
+          <li><b>As teclas digitam os símbolos errados:</b> alterne o ajuste Keyboard entre <i>Types what your keys say</i> (digita o que está nas teclas) e <i>MSX key positions</i> (posições das teclas do MSX).</li>
+        </ul>
+      </section>
+
+      <section class="chapter try">
+        <h2>Pronto?</h2>
+        <p>Carregue uma BIOS, coloque um cartucho, uma fita ou um disquete e digite <code>PRINT "Olá, MSX"</code>.</p>
+        <a class="cta" href="../">Abrir o MSX →</a>
+      </section>
+
+      <footer class="foot">
+        Ok-Prompt · © 2026 Eduardo Stern · <a href="./history.html">História do MSX</a> ·
+        irmãos: <a href="https://a-prompt.stern.workers.dev">A-Prompt</a> (CP/M),
+        <a href="https://k-prompt.stern.workers.dev">K-Prompt</a> (ZX Spectrum, TK90X) ·
+        <a href="https://github.com/eduardostern/Ok-Prompt">Código-fonte</a> ·
+        MSX é uma marca da MSX Licensing Corporation
+      </footer>
+    </div>
+    <script type="module" src="../src/history.ts"></script>
+  </body>
+</html>

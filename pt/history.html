@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>História do MSX · Ok-Prompt</title>
+    <meta name="description" content="Uma breve história do MSX: o padrão, como funciona um MSX1, as máquinas, o Gradiente Expert e o Sharp Hotbit no Brasil, o que mudou do Expert 1.0 para o 1.1 e o paralelo com o CP/M." />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="history">
+    <div class="doc">
+      <nav class="doc-nav">
+        <a href="../" class="brand-sm"><span class="ok">Ok</span>-Prompt</a>
+        <span class="doc-links"><a href="./manual.html" class="doc-back">Manual</a> <a href="../history.html" class="doc-back" hreflang="en" lang="en">English</a> <a href="../" class="doc-back">← Voltar ao MSX</a></span>
+      </nav>
+
+      <header class="doc-head">
+        <span class="kicker">Guia de campo · De Tóquio a Manaus</span>
+        <h1>O que é o MSX?</h1>
+        <p class="lede">
+          Um único padrão de computador doméstico, fabricado por dezenas de
+          empresas, para que um cartucho ou uma fita comprados para uma marca
+          rodassem em todas. Foi o rei no Japão, na Coreia e no Brasil nos anos
+          1980, e é a máquina que o Ok-Prompt emula.
+        </p>
+        <ol class="toc">
+          <li><a href="#standard">Um padrão, muitos fabricantes</a></li>
+          <li><a href="#inside">Como funciona um MSX1</a></li>
+          <li><a href="#world">Pelo mundo</a></li>
+          <li><a href="#brazil">Brasil: Expert e Hotbit</a></li>
+          <li><a href="#versions">Expert 1.0, 1.1 e Hotbit, lado a lado</a></li>
+          <li><a href="#generations">MSX2, MSX2+ e turbo R</a></li>
+          <li><a href="#disks">Drives de disquete</a></li>
+          <li><a href="#cpm">MSX e CP/M</a></li>
+          <li><a href="#games">Jogos e legado</a></li>
+          <li><a href="#fade">O PC levou tudo</a></li>
+          <li><a href="#sources">Fontes</a></li>
+        </ol>
+      </header>
+
+      <section class="timeline" aria-label="Linha do tempo">
+        <div><b>Jun 1983</b>ASCII e Microsoft anunciam o MSX</div>
+        <div><b>Out 1983</b>Primeira máquina à venda: Mitsubishi ML-8000</div>
+        <div><b>Jun 1984</b>MSX-DOS 1.00</div>
+        <div><b>Out 1984</b>Lei de Informática no Brasil (Lei 7.232)</div>
+        <div><b>1985</b>MSX2 (Yamaha V9938)</div>
+        <div><b>Nov 1985</b>Sharp Hotbit HB-8000</div>
+        <div><b>Dez 1985</b>Gradiente Expert XP-800</div>
+        <div><b>1987</b>O SCC da Konami; Metal Gear (MSX2)</div>
+        <div><b>1988</b>MSX2+ (V9958), só no Japão; MSX-DOS 2</div>
+        <div><b>1989</b>Expert Plus e DD Plus</div>
+        <div><b>1990</b>MSX turbo R (R800); a Gradiente deixa o MSX</div>
+        <div><b>Dez 1991</b>Panasonic FS-A1GT, o último MSX</div>
+        <div><b>Out 1992</b>Fim da reserva de mercado no Brasil</div>
+      </section>
+
+      <section id="standard" class="chapter">
+        <h2><span>1</span>Um padrão, muitos fabricantes</h2>
+        <div class="cols">
+          <div>
+            <p>
+              O MSX foi concebido pela Microsoft para o mercado japonês e
+              impulsionado por <b>Kazuhiko Nishi</b>, da ASCII Corporation. Foi
+              anunciado em junho de 1983 (as fontes dão tanto o dia 16 quanto o
+              27), e a primeira máquina, o Mitsubishi ML-8000, chegou às lojas em
+              21 de outubro de 1983.
+            </p>
+            <p>
+              A ideia era a mesma que o VHS tinha levado ao vídeo: uma única
+              especificação, seguida por Sony, Panasonic, Yamaha, Philips,
+              Toshiba, Canon, Sanyo e muitas outras. Um cartucho funciona em
+              qualquer MSX; uma fita gravada num carrega no outro. A Microsoft
+              chamou a iniciativa de "uma tentativa de criar padrões unificados"
+              para computadores domésticos.
+            </p>
+          </div>
+          <aside class="callout">
+            <h3>O que quer dizer MSX?</h3>
+            <p>Ninguém concorda, nem o próprio criador:</p>
+            <ul>
+              <li><b>Microsoft eXtended</b>, por causa do MSX BASIC: a crença popular.</li>
+              <li><b>Matsushita–Sony</b>, os dois gigantes por trás dele.</li>
+              <li><b>Machines with Software eXchangeability</b> (máquinas com software intercambiável): Nishi, em 2001.</li>
+              <li>O <b>míssil MX</b>: Nishi de novo, em 1985.</li>
+              <li>"<b>The next of Microsoft</b>" (o próximo da Microsoft), com as
+                iniciais da Matsushita e da Sony dentro: o livro de Nishi de 2020.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section id="inside" class="chapter">
+        <h2><span>2</span>Como funciona um MSX1</h2>
+        <p class="intro">
+          Todo MSX1 é o mesmo punhado de chips, e é exatamente por isso que o
+          software passava de uma marca para outra. O Ok-Prompt emula cada um deles.
+        </p>
+        <div class="chips">
+          <div class="chip-card"><b>Z80A</b><span>A CPU, a 3,58 MHz. O mesmo processador das máquinas CP/M.</span></div>
+          <div class="chip-card"><b>TMS9918A</b><span>Vídeo da Texas Instruments: 16 KB de memória própria, 256×192 pixels, 15 cores, 32 sprites, mas só 4 por linha. Texto em no máximo 40×24.</span></div>
+          <div class="chip-card"><b>AY-3-8910</b><span>O PSG, o chip de som: três vozes de onda quadrada, ruído, uma envoltória e as portas de joystick.</span></div>
+          <div class="chip-card"><b>8255 PPI</b><span>Escolhe de que slot vem cada bloco de 16 KB da memória, lê o teclado uma linha por vez, controla a luz do CAPS, o clique das teclas e o motor do cassete.</span></div>
+          <div class="chip-card"><b>ROM de 32 KB</b><span>16 KB de BIOS mais 16 KB de MSX BASIC 1.0, da Microsoft. No mínimo 8 KB de RAM.</span></div>
+          <div class="chip-card"><b>Slots</b><span>Quatro espaços de endereçamento de 64 KB (ROM, RAM, duas entradas de cartucho), vistos 16 KB por vez. A BIOS procura cartuchos pelas letras <code>AB</code> no início deles.</span></div>
+          <div class="chip-card"><b>Cassete</b><span>1200 ou 2400 bps. A 1200, um 0 é um ciclo de 1200 Hz e um 1 são dois ciclos de 2400 Hz.</span></div>
+          <div class="chip-card"><b>Depois</b><span>MSX2 (1985, V9938, 80 colunas), MSX2+ (1988, V9958, só no Japão), turbo R (1990, R800 a 7,16 MHz, só da Panasonic).</span></div>
+        </div>
+      </section>
+
+      <section id="world" class="chapter">
+        <h2><span>3</span>Pelo mundo</h2>
+        <div class="cols">
+          <div>
+            <p>
+              O MSX foi o computador doméstico líder dos anos 1980 no <b>Japão</b>,
+              na <b>Coreia do Sul</b>, na <b>Argentina</b> e no <b>Brasil</b>, e
+              teve boa popularidade na <b>Holanda</b> e na <b>Espanha</b>. A Yamaha
+              vendeu salas de aula inteiras em rede (máquina do professor mais as
+              dos alunos) para escolas na <b>URSS</b>, em Cuba e em países árabes.
+            </p>
+            <p>
+              Nunca decolou nos <b>EUA</b>, onde só a Spectravideo e a Yamaha
+              tentaram, por pouco tempo, nem no <b>Reino Unido</b>, onde chegou
+              tarde (setembro de 1984) e mais caro que o Spectrum, o Commodore 64
+              e o Amstrad.
+            </p>
+            <p class="muted">
+              Quantos foram vendidos é motivo de discussão: de uns 4 milhões
+              (Nishi) a 9 milhões (outras estimativas).
+            </p>
+          </div>
+          <ul class="makers">
+            <li><b>Sony HitBit</b> HB-75 (abril de 1984, ¥ 69.800) e uma longa linhagem até o MSX2+ HB-F1XV (1989).</li>
+            <li><b>Yamaha CX5M</b> (1984): um MSX com sintetizador FM embutido (YM2151) e saída MIDI, para a era do DX7.</li>
+            <li><b>Philips VG-8020</b> (1984), fabricado pela Kyocera; versões para cada país europeu.</li>
+            <li><b>Spectravideo SVI-728</b>: a empresa americana cujo SV-328 era quase um MSX antes do MSX.</li>
+            <li><b>Daewoo IQ-1000</b> e os consoles Zemmix na Coreia; o SPC-800 da Samsung.</li>
+            <li><b>Sakhr AX150</b>: feito pela Yamaha para a Al Alamiah, do Kuwait, com árabe, para o Egito e o Golfo.</li>
+            <li><b>Panasonic, National, Toshiba, Canon, Sanyo, Mitsubishi</b> e outros no Japão.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="brazil" class="chapter">
+        <h2><span>4</span>Brasil: Expert e Hotbit</h2>
+        <div class="cols">
+          <div>
+            <p>
+              Em 29 de outubro de 1984 o Brasil aprovou a <b>Lei 7.232</b>, a
+              Política Nacional de Informática: o mercado de micro e
+              minicomputadores ficou reservado a empresas de capital nacional (a
+              <i>reserva de mercado</i>), sob a fiscalização da SEI. Máquinas
+              estrangeiras não podiam simplesmente ser importadas; os computadores
+              eram feitos aqui, muitas vezes como versões nacionais de projetos de
+              fora. A reserva durou até o começo dos anos 1990 (as fontes falam em
+              1991 ou 1992).
+            </p>
+            <p>
+              Foi assim que o MSX chegou, duas vezes na mesma semana. O <b>Sharp
+              Hotbit HB-8000</b>, fabricado pela subsidiária brasileira da Sharp,
+              por meio da divisão Epcom, na Zona Franca de Manaus, saiu em
+              <b>novembro de 1985</b>: o primeiro MSX brasileiro. O <b>Gradiente
+              Expert XP-800</b>, apresentado na feira Informática '85, em São Paulo,
+              veio em seguida, em <b>1º de dezembro de 1985</b>, por
+              Cr$ 4.640.000 (cerca de US$ 470).
+            </p>
+            <p>
+              Juntos, eles fizeram o MSX "praticamente matar" os outros
+              computadores de 8 bits no Brasil. Revistas como Micro Sistemas, CPU
+              MSX e MSX Micro publicavam listagens e análises, e kits de empresas
+              como a DDX depois transformaram Experts e Hotbits em máquinas MSX2 e
+              MSX2+. A comunidade nunca foi embora: o Clube MSX ainda imprime uma
+              revista, e os encontros MSXRio aconteceram durante anos.
+            </p>
+          </div>
+          <div class="machines">
+            <article>
+              <h3>Gradiente Expert</h3>
+              <p>
+                Visual de aparelho de som, com <b>teclado separado</b> (QWERTY com
+                ç, teclado numérico, e GRAPH e CODE marcadas LGRA e RGRA) num
+                conector próprio. Sem luz de CAPS, sem tecla de reset. Muitas vezes
+                chamado de cópia do National CF-3000, da Panasonic; o msx.org
+                observa que a Gradiente não era licenciada oficial do MSX.
+              </p>
+              <ul>
+                <li><b>XP-800</b> (1985): BASIC 1.0</li>
+                <li><b>GPC-1</b> (1987): BASIC 1.1, adaptador de TV embutido</li>
+                <li><b>Expert Plus</b> (1989): gabinete preto</li>
+                <li><b>Expert DD Plus</b> (1989): drive de 3½" e 720 KB, botão de reset</li>
+              </ul>
+              <p class="muted">A Gradiente nunca fez um MSX2 e deixou o MSX em 1990.</p>
+            </article>
+            <article>
+              <h3>Sharp Hotbit HB-8000</h3>
+              <p>
+                Gabinete único com teclado QWERTY com ç, 64 KB de RAM, saída de TV
+                PAL-M, porta de impressora Centronics e drives de 5¼" opcionais.
+                Segundo o msx.org, ele "seguia rigorosamente os padrões MSX".
+              </p>
+              <ul>
+                <li><b>1.0</b> e <b>1.1</b> (1985): branco e cinza; nunca se fez o dump de uma ROM 1.0</li>
+                <li><b>1.2</b> (1987): gabinete preto</li>
+              </ul>
+              <p class="muted">A produção terminou em 1988.</p>
+            </article>
+          </div>
+        </div>
+        <p class="note-box">
+          O Brasil usava <b>PAL-M</b>: cor PAL numa imagem de 525 linhas e 60 Hz,
+          como o NTSC. Por isso os MSX brasileiros são máquinas de 60 Hz, com a
+          música dos jogos na velocidade japonesa, e não nos 50 Hz mais lentos da Europa.
+        </p>
+      </section>
+
+      <section id="versions" class="chapter">
+        <h2><span>5</span>Expert 1.0, 1.1 e Hotbit, lado a lado</h2>
+        <p class="intro">
+          A tabela mistura o que dizem as fontes com o que medimos rodando as
+          ROMs originais no Ok-Prompt (marcado como <span class="measured">medido</span>).
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th></th><th>Expert 1.0</th><th>Expert 1.1 (e DD Plus)</th><th>Hotbit 1.1</th></tr>
+            </thead>
+            <tbody>
+              <tr><th>Texto de abertura</th><td>MSX BASIC versão 1.0 Br · Gradiente</td><td>MSX BASIC versão 1.1 Br · Gradiente</td><td>HOT-BASIC versão 1.1 · EPCOM [Z.F.MANAUS] 1985</td></tr>
+              <tr><th>Memória livre</th><td colspan="3">28.815 bytes <span class="measured">medido</span></td></tr>
+              <tr><th>ç e Ç</th><td>Nos códigos 60h e 7Eh, no lugar de <code>`</code> e <code>~</code> <span class="measured">medido</span></td><td>Em 87h e 80h, como em todos os outros MSX <span class="measured">medido</span></td><td>87h e 80h <span class="measured">medido</span></td></tr>
+              <tr><th>ã, õ e outras letras com til</th><td>Nos códigos que os outros MSX usam para ä, ö, ü… <span class="measured">medido</span></td><td>B0h–B7h, as posições internacionais do MSX (BRASCII) <span class="measured">medido</span></td><td>Também nas posições internacionais (ã em B1h) <span class="measured">medido</span></td></tr>
+              <tr><th>Tabela do teclado</th><td>O layout internacional; ç e Ç só aparecem porque a fonte desenha <code>`</code> e <code>~</code> assim <span class="measured">medido</span></td><td>Uma tecla de ç de verdade; <code>"</code> em Shift+2; teclas de acento; ã, é e õ também por combinações com CODE <span class="measured">medido</span></td><td>Tecla de ç; acentos digitados com teclas de acento (mortas), como numa máquina de escrever <span class="measured">medido</span></td></tr>
+              <tr><th>Formato de data (ID da BIOS)</th><td>Mês/dia/ano <span class="measured">medido</span></td><td>Dia/mês/ano <span class="measured">medido</span></td><td>Mês/dia/ano <span class="measured">medido</span></td></tr>
+              <tr><th>SCREEN 0</th><td colspan="2">Branco sobre preto, não o azul-escuro padrão <span class="measured">medido</span></td><td>Branco sobre azul <span class="measured">medido</span></td></tr>
+              <tr><th>Outras peculiaridades</th><td>O texto começa uma coluna para dentro <span class="measured">medido</span>; uma tela de créditos escondida (abaixo)</td><td>BIOS do DD Plus idêntica, byte a byte <span class="measured">medido</span></td><td>Liga com o CAPS ativado, que também põe o ç em maiúscula <span class="measured">medido</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cols">
+          <div>
+            <h3>Por que o 1.0 e o 1.1 não se entendiam</h3>
+            <p>
+              O 1.0 pôs as letras do português onde deu: ç e Ç em dois códigos
+              ASCII, as letras com til nos códigos do trema. Um texto escrito num
+              1.0 saía como <code>`</code> e <code>ä</code> nas outras máquinas, e
+              programas que imprimiam <code>`</code> ou <code>~</code> mostravam ç
+              num 1.0. A Gradiente fez um recall da maioria dos XP-800, trocando a
+              ROM pela 1.1 e mudando nove teclas, e é por isso que a maioria dos
+              "Expert 1.0" de hoje na verdade tem a 1.1. A versão 1.1 levou as
+              letras para os códigos que viraram o <b>BRASCII</b>, o que acabou com
+              as incompatibilidades de acentuação entre fabricantes.
+            </p>
+            <p>
+              Comparando as duas ROMs no Ok-Prompt: 580 bytes são diferentes, em 84
+              trechos, a maioria nas rotinas de teclado e na tabela de teclas (20
+              das suas 288 entradas).
+            </p>
+          </div>
+          <aside class="callout">
+            <h3>Os créditos do Expert 1.0</h3>
+            <p>Num 1.0, digite:</p>
+            <pre>DEFUSR=5032:A=USR(0)</pre>
+            <p>
+              A tela se limpa e mostra <b>GRADIENTE</b> e catorze sobrenomes da
+              equipe: Mandarino, Galera, Hilario, Marotti, Farina, Macedo, Hitonori,
+              Sperandelli, Negreiros, Firmino, Siconi, Avila, Tozzi e Cruz.
+              Num 1.1 não acontece nada: os créditos foram retirados.
+              <span class="measured">medido</span>
+            </p>
+          </aside>
+        </div>
+        <h3>Outras diferenças registradas pelas fontes</h3>
+        <ul class="facts">
+          <li><b>Hardware do Expert:</b> o teclado numérico fica em posições fora do padrão na matriz do teclado; a porta de impressora é Centronics num conector IDC de 26 pinos fora do padrão; o conector RGB leva +12 V num dos pinos; o barramento de expansão divide o slot 3 com o slot de cartucho B.</li>
+          <li><b>Expert Plus e DD Plus</b> usam um MSX-Engine da Toshiba (T7937A), cujo chip de vídeo não tem alguns truques não documentados do TMS9918, e passaram a RAM para o slot 3-0. Carregadores de jogos escritos para o Expert 1.1 e o Hotbit a procuravam no lugar errado e travavam.</li>
+          <li><b>Hotbit 1.2:</b> o comando PLAY conta ticks de menos para uma máquina de 60 Hz, e a música toca rápido demais.</li>
+          <li><b>Qual ROM corrigiu o quê:</b> as fontes divergem sobre se foi o Hotbit 1.1 ou o 1.2 que acertou a tabela de caracteres para bater com a do Expert.</li>
+          <li><b>Os bytes de ID da BIOS</b>, em 002Bh–002Ch, informam o conjunto de caracteres, o formato de data, 50/60 Hz e o teclado. Nunca se definiu um valor para o Brasil: os dois fabricantes brasileiros dizem "internacional".</li>
+        </ul>
+      </section>
+
+      <section id="generations" class="chapter">
+        <h2><span>6</span>MSX2, MSX2+ e turbo R</h2>
+        <p class="intro">
+          Cada geração manteve rodando o software da anterior: um cartucho, uma fita ou um disquete de MSX1 funciona num MSX2,
+          num MSX2+ e num turbo R. O que mudou foi principalmente a imagem e, depois, a velocidade.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>MSX1</th><th>MSX2</th><th>MSX2+</th><th>turbo R</th></tr></thead>
+            <tbody>
+              <tr><th>Ano</th><td>1983</td><td>1985</td><td>Outubro de 1988</td><td>Novembro de 1990</td></tr>
+              <tr><th>Vídeo</th><td>TMS9918: 16 cores, 256×192</td><td>Yamaha V9938: 16 de 512 cores, até 512×212 (424 entrelaçado), 256 cores na SCREEN 8</td><td>Yamaha V9958: também 19.268 cores ao mesmo tempo (YJK, SCREEN 12), rolagem horizontal</td><td>O mesmo V9958</td></tr>
+              <tr><th>Texto</th><td>40 colunas</td><td colspan="3">80 colunas (WIDTH 80 na SCREEN 0)</td></tr>
+              <tr><th>Sprites</th><td>4 por linha, uma cor</td><td colspan="3">8 por linha, uma cor para cada linha do sprite</td></tr>
+              <tr><th>Desenho</th><td>Pela CPU</td><td colspan="3">O próprio chip de vídeo copia, preenche e traça linhas, com operações lógicas</td></tr>
+              <tr><th>CPU</th><td colspan="3">Z80 a 3,58 MHz</td><td>R800 a 7,16 MHz, muitas vezes várias vezes mais rápido que o Z80, que ele também mantém</td></tr>
+              <tr><th>Memória</th><td>8K–64K</td><td>De 64K no mínimo (Japão) a 128K (Europa), com memory mapper acima de 64K</td><td>64K no mínimo, mapper obrigatório</td><td>256K no mínimo, mapper</td></tr>
+              <tr><th>BASIC</th><td>MSX BASIC 1.0</td><td>2.0 (ou 2.1), mais uma SUB-ROM de 16K</td><td>3.0</td><td>4.0 (4.1 no FS-A1GT)</td></tr>
+              <tr><th>Também de série</th><td></td><td>Um relógio a bateria que guarda os ajustes de tela (SET SCREEN)</td><td>Kanji nas máquinas japonesas; a maioria tinha MSX-MUSIC (FM)</td><td>Som PCM com microfone; MSX-DOS 2 em ROM; MIDI no GT</td></tr>
+              <tr><th>Vendido em</th><td>Japão, Europa, Brasil, Coreia, mundo árabe…</td><td>Japão e Europa</td><td colspan="2">Só no Japão</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cols">
+          <div>
+            <h3>As máquinas</h3>
+            <p>
+              Os MSX2 da Europa eram sobretudo holandeses e espanhóis: o <b>Philips NMS 8250</b> (1986, 128K, drive de 720K,
+              fabricado pela Sanyo), o 8255, com dois drives, e o <b>8280</b> (1987), além do <b>HB-F700P</b> da Sony, feito
+              só para a Europa. O Japão tinha o barato <b>Panasonic FS-A1</b> (1986, ¥ 29.800) e a linha HB-F1 da Sony.
+            </p>
+            <p>
+              O MSX2+ veio só da <b>Panasonic</b> (FS-A1WX, WSX, FX), da <b>Sony</b> (HB-F1XDJ e o HB-F1XV de
+              1989, seu último MSX) e da <b>Sanyo</b> (o WAVY PHC-70FD). A ASCII, que tocou o padrão sozinha depois que
+              a Microsoft saiu, em 1986, perdeu o interesse pela Europa, e nem um único MSX2+ foi lançado lá.
+            </p>
+            <p>
+              O turbo R deveria ser o MSX3, mas o novo chip de vídeo da Yamaha não ficou pronto. No lugar, a ASCII projetou uma CPU,
+              o <b>R800</b>: o dobro do clock do Z80, ULA de 16 bits, a maioria das instruções em um a poucos
+              ciclos. Só a Panasonic o fabricou: o <b>FS-A1ST</b> (1990, ¥ 87.800) e o <b>FS-A1GT</b> (dezembro de
+              1991, ¥ 99.800), o último MSX já feito.
+            </p>
+          </div>
+          <aside class="callout">
+            <h3>MSX2 e 2+ no Brasil</h3>
+            <p>
+              Nenhum MSX2 foi fabricado no Brasil, embora os usuários da Gradiente tenham esperado por um. Em vez disso, os brasileiros
+              <b>fizeram upgrade</b>: kits da <b>ACVS</b> (Ademir Carchano, depois CIEL) e da <b>DDX</b> (Digital Design)
+              transformavam um Expert ou um Hotbit em MSX2 ou MSX2+, com o novo chip de vídeo, memory mapper, a
+              SUB-ROM e, no Kit 2+, som FM. A wiki do msx.org observa que os upgrades para MSX2+ foram vendidos principalmente no
+              Brasil. Mais tarde, Carchano fez placas MSX2+ completas para o gabinete do Expert (CIEL Expert 2+, 3 e 4 Turbo).
+            </p>
+            <p>
+              O Ok-Prompt dá boot nas ROMs do kit 2+ para o Expert e para o Hotbit, FM-BASIC incluído
+              <span class="measured">medido</span>.
+            </p>
+            <h3>Como um MSX2+ sabe que foi resetado</h3>
+            <p>
+              A porta <code>F4h</code> preserva um bit através do reset: a BIOS liga esse bit depois de iniciar e, num boot a quente,
+              pula o logotipo e não mexe na RAM. Sem isso, o logotipo dos kits nunca aparecia
+              <span class="measured">medido</span>.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="disks" class="chapter">
+        <h2><span>7</span>Drives de disquete</h2>
+        <p class="intro">
+          Fita era lenta e cheia de manha; um drive de disquete transformava o MSX num pequeno computador de escritório, com o MSX-DOS
+          rodando programas CP/M (veja o próximo capítulo). O jeito como isso funcionava é um belo exemplo de projeto.
+        </p>
+        <div class="cols">
+          <div>
+            <h3>Do cartucho ao drive embutido</h3>
+            <p>
+              No MSX1 o drive vinha com uma <b>interface em cartucho</b> e um cabo até o drive: o Philips
+              VY-0010 e o Sony HBD-50 (ambos de 1985) para disquetes de 3,5" de face simples (360K), o Sony HBD-F1 para
+              os de dupla face (720K). No MSX2 a interface continuava opcional, mas muitas máquinas tinham um ou
+              dois drives de 3,5" embutidos, e o software vinha em disquetes de 360K e 720K.
+            </p>
+            <h3>A ROM de disco</h3>
+            <p>
+              Toda interface traz uma <b>ROM de disco</b> de 16K com o <b>Disk BASIC</b> e o <b>núcleo do MSX-DOS</b>,
+              iguais para todos os fabricantes, mais um pequeno driver para a sua própria controladora. O núcleo só chama o
+              driver por uma tabela de saltos fixa: <code>4010h DSKIO</code> lê ou grava setores,
+              <code>4013h DSKCHG</code> pergunta se o disquete foi trocado, <code>4016h GETDPB</code> descreve o
+              formato, <code>401Ch DSKFMT</code> formata. Assim, cada fabricante só escrevia o driver, e qualquer ROM de disco
+              funciona em qualquer MSX.
+            </p>
+            <p>
+              Na partida, a BIOS encontra a ROM no seu slot e deixa que ela monte sua área de trabalho na RAM, e é por isso que
+              o BASIC mostra menos bytes livres com um drive. Depois ela lê o primeiro setor do disquete e o executa: um
+              disquete com <code>MSXDOS.SYS</code> inicia o MSX-DOS; qualquer outro deixa você no Disk BASIC. O MSX1 não tem
+              relógio, então a data começa em 1º de janeiro de 1984, a não ser que você informe outra.
+            </p>
+            <h3>A controladora</h3>
+            <p>
+              Muitas interfaces usam a controladora de disquete <b>WD2793</b>, da Western Digital (Philips, Sony e as
+              brasileiras Microsol e DDX); a Panasonic usava uma <b>TC8566AF</b>, da Toshiba. Quase todas põem os
+              registradores da controladora na memória, dentro do slot da ROM (a Philips em <code>7FF8h</code>, a Panasonic
+              em <code>7FB8h</code>). As brasileiras Microsol CDX-2 e DDX usavam <b>portas de E/S</b>,
+              <code>D0h</code>–<code>D4h</code>, e é por isso que as ROMs de disco delas são próprias.
+            </p>
+          </div>
+          <div>
+            <div class="table-wrap">
+              <table class="compare">
+                <thead><tr><th>Interface</th><th>O que era</th></tr></thead>
+                <tbody>
+                  <tr><th>Philips VY-0010</th><td>Cartucho de 1985, 3,5" de face simples, WD2793</td></tr>
+                  <tr><th>Sony HBD-50, HBD-F1</th><td>Cartuchos de 1985, face simples e dupla face, WD2793</td></tr>
+                  <tr><th>Panasonic FS-FD1A</th><td>Drive de dupla face num único cartucho, TC8566AF</td></tr>
+                  <tr><th>Microsol CDX-2</th><td>Fortaleza, 1986: um ou dois drives de PC, 5,25" ou 3,5", portas de E/S, um Disk BASIC brasileiro</td></tr>
+                  <tr><th>DDX (Digital Design)</th><td>Versões 1.0, 1.2 e 3.0, vendidas com um drive de 5,25" e 360K</td></tr>
+                  <tr><th>Liftron 2.7, DMX 1.2</th><td>Outras interfaces brasileiras, compatíveis com a CDX-2</td></tr>
+                  <tr><th>Gradiente Expert DD Plus</th><td>1989, drive de 3,5" e 720K embutido; WD2793 na memória</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <aside class="callout">
+              <h3>Os DOS</h3>
+              <ul>
+                <li><b>MSX-DOS 1</b> (Microsoft, 1984, por Tim Paterson): disquetes FAT12 que um PC lê, programas CP/M, sem subdiretórios.</li>
+                <li><b>MSX-DOS 2</b> (ASCII, julho de 1988): subdiretórios, memory mapper, pipes e redirecionamento; primeiro em cartucho, depois embutido no turbo R.</li>
+                <li><b>SOLX-DOS</b> (Microsol, 1986): um DOS brasileiro, em português, para a CDX-2, mantido até 2005.</li>
+                <li><b>Nextor</b> (Konamiman, 2011): a continuação do MSX-DOS 2.31, com FAT16, discos rígidos e cartões SD.</li>
+              </ul>
+              <h3>FAST!DiskROM</h3>
+              <p>
+                Em 2005, Adriano Camargo Rodrigues da Cunha (A&amp;L Software) escreveu uma nova ROM de disco para a CDX-2
+                e para as interfaces DDX, Liftron e DMX: cerca de 20 KB/s contra uns 5 das originais, compatível com o MSX-DOS 2,
+                até quatro drives e mais memória livre para o BASIC.
+              </p>
+            </aside>
+          </div>
+        </div>
+        <p class="note-box">
+          No Ok-Prompt, qualquer ROM de disco comum funciona: a própria máquina responde à tabela de saltos sobre uma imagem
+          <code>.dsk</code>, seja qual for a controladora para a qual a ROM foi escrita. Testado com as ROMs do Philips VG-8235, Sony HB-3600,
+          Microsol CDX-2 e FAST!DiskROM no Expert, no Hotbit e no kit 2+; num Expert 1.1, o BASIC
+          fica com 23.432 bytes com a ROM da Philips e 25.429 com a FAST!DiskROM <span class="measured">medido</span>.
+        </p>
+      </section>
+
+      <section id="cpm" class="chapter">
+        <h2><span>8</span>MSX e CP/M</h2>
+        <p class="intro">
+          O irmão do Ok-Prompt, o <a href="https://a-prompt.stern.workers.dev">A-Prompt</a>,
+          emula CP/M sobre o mesmo núcleo Z80. Os dois padrões atacaram o mesmo
+          problema por lados opostos, e se encontraram no MSX-DOS.
+        </p>
+        <div class="cols">
+          <div>
+            <p>
+              O <b>CP/M</b> (Gary Kildall, 1974) tornou o <i>software</i> portável
+              entre hardwares diferentes: cada fabricante escrevia uma pequena BIOS, e
+              todo programa falava com o BDOS por meio de <code>CALL 5</code>. Em 1982
+              ele já estava licenciado para mais de 450 tipos de máquina.
+            </p>
+            <p>
+              O <b>MSX</b> tornou o <i>hardware</i> igual, de modo que os programas
+              podiam até ir direto aos chips. Mas ele também precisava de um sistema
+              de disco. Em agosto de 1983 a Microsoft contratou <b>Tim Paterson</b>,
+              autor do 86-DOS (que virou o MS-DOS), para escrever um "MS-DOS para
+              Z80". Ele concluiu que o sistema deveria rodar programas CP/M
+              diretamente. O <b>MSX-DOS 1.00</b> é datado de 20 de junho de 1984.
+            </p>
+            <p>
+              O resultado é um híbrido: MS-DOS por fora, CP/M por dentro. Os
+              programas carregam em <code>0100h</code> e chamam <code>0005h</code>
+              como programas CP/M; as chamadas de FCB são as do CP/M 2.2; WordStar,
+              Turbo Pascal e o M80 e o L80 da Microsoft eram, em princípio,
+              compatíveis. Mas os disquetes são FAT12, legíveis num PC, e a linha de
+              comando é um COMMAND.COM, não um CCP. O MSX-DOS 2 (1988) acrescentou
+              subdiretórios, e o Nextor leva o sistema adiante até hoje.
+            </p>
+          </div>
+          <div class="table-wrap">
+            <table class="compare">
+              <thead><tr><th></th><th>CP/M 2.2</th><th>MSX-DOS 1</th></tr></thead>
+              <tbody>
+                <tr><th>Padroniza</th><td>O sistema operacional</td><td>A máquina inteira</td></tr>
+                <tr><th>CPU</th><td>8080 ou Z80</td><td>Z80</td></tr>
+                <tr><th>Camadas</th><td>BIOS · BDOS · CCP</td><td>MSX BIOS · MSXDOS.SYS · COMMAND.COM</td></tr>
+                <tr><th>Chamadas de sistema</th><td><code>CALL 5</code></td><td><code>CALL 5</code>, os números do CP/M e mais alguns</td></tr>
+                <tr><th>Programas</th><td>.COM em 0100h</td><td>.COM em 0100h</td></tr>
+                <tr><th>Arquivos</th><td>FCBs, nomes 8.3</td><td>FCBs, nomes 8.3</td></tr>
+                <tr><th>Disquetes</th><td>O formato de cada fabricante</td><td>FAT12, como o MS-DOS</td></tr>
+                <tr><th>Tela</th><td>Qualquer terminal: ADM-3A, VT52…</td><td>Códigos parecidos com os do VT52; 40 colunas no MSX1</td></tr>
+              </tbody>
+            </table>
+            <p class="muted">
+              O que não passou para o MSX: programas CP/M configurados para os
+              códigos de outro terminal, e tudo o que precisa de 80 colunas, que só
+              vieram com o MSX2.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="games" class="chapter">
+        <h2><span>9</span>Jogos e legado</h2>
+        <div class="cols">
+          <p>
+            A Konami fez do MSX uma máquina de jogos: <b>Knightmare</b> (1986),
+            <b>Gradius</b> (chamado Nemesis na Europa, 1986), <b>Nemesis 2</b>
+            (1987). A partir de 1987 os cartuchos da Konami traziam o <b>SCC</b>, um
+            chip de som com cinco canais de formas de onda de 32 bytes, concebido com
+            a Toshiba em 1986; quinze jogos o usaram. O Ok-Prompt toca o SCC.
+          </p>
+          <p>
+            O primeiro jogo de Hideo Kojima, <b>Metal Gear</b>, saiu para o MSX2 em
+            13 de julho de 1987, e os dois primeiros Metal Gear são jogos de MSX. No
+            Brasil, as softhouses vendiam programas em português: um anúncio da Micro
+            Sistemas de 1987 lista mais de 150 títulos para MSX e TK-90X.
+            O Ok-Prompt carrega fitas <code>.cas</code> e digita
+            <code>BLOAD"CAS:",R</code> para você.
+          </p>
+        </div>
+      </section>
+
+      <section id="fade" class="chapter">
+        <h2><span>10</span>O PC levou tudo</h2>
+        <p class="intro">
+          O MSX era para ser o VHS dos computadores domésticos: um padrão, todas as marcas. Acabou virando arte perdida,
+          e a máquina que venceu foi justamente a que não tinha dono.
+        </p>
+        <div class="cols">
+          <div>
+            <h3>Japão: os pais vão embora</h3>
+            <p>
+              No início de 1986 a Microsoft encerrou a parceria com a ASCII, alegando que Nishi lhe devia mais de US$ 500 mil,
+              e abriu sua própria empresa no Japão. A ASCII tocou o MSX sozinha, enquanto o futuro da Microsoft era o MS-DOS e
+              o Windows. No Japão, como a história costuma ser contada, os jogos foram para o Famicom da Nintendo e a
+              computação séria para o PC-98 da NEC. A Sony parou com o HB-F1XV em 1989; a Panasonic fez o último MSX, o FS-A1GT, em
+              1991, e encerrou a produção alguns anos depois (as fontes falam de 1993 a 1995), dizendo que o público tinha perdido
+              o interesse por computadores domésticos, e não que as vendas tinham caído.
+            </p>
+            <h3>Europa: um fabricante a menos</h3>
+            <p>
+              Na Europa o MSX tinha enfrentado o Commodore 64, o Spectrum e o Amstrad, e depois o Amiga e o
+              Atari ST. A Philips, sua principal defensora por lá, fez seus últimos MSX2 em 1987, e nenhum MSX2+ jamais chegou até lá.
+            </p>
+            <h3>Brasil: o mercado se abre</h3>
+            <p>
+              Os MSX brasileiros existiram por causa da <b>reserva de mercado</b>: a partir de outubro de 1984, a lei reservava
+              os microcomputadores às empresas nacionais. A Epcom, da Sharp, parou o Hotbit em 1988, e a Gradiente deixou o
+              MSX em 1990. Em outubro de 1991 uma nova lei trocou a reserva por incentivos fiscais, a antiga expirou
+              em outubro de 1992, e as peças importadas e os clones de PC chegaram. Cerca de 400 mil MSX tinham sido fabricados no Brasil
+              entre 1985 e 1992.
+            </p>
+          </div>
+          <aside class="callout">
+            <h3>Por que o PC venceu</h3>
+            <p>
+              Um MSX precisava de licença: a ASCII e a Microsoft decidiam o que era o padrão, e só elas podiam fazê-lo
+              avançar. O IBM PC ficou aberto por acidente. Em 1983 e 1984, a Compaq e depois a Phoenix reconstruíram sua
+              BIOS por projeto em sala limpa (clean room), dentro da lei, e a Microsoft manteve o direito de vender o MS-DOS para qualquer um. A partir daí,
+              qualquer fábrica, em Taiwan, em Manaus, em qualquer lugar, podia montar um PC sem pedir licença, e cada uma tornava o
+              seguinte mais barato.
+            </p>
+            <p class="muted">
+              Esse último ponto é a nossa leitura da história, não uma citação; os fatos sobre a BIOS em sala limpa são
+              da Wikipédia.
+            </p>
+          </aside>
+        </div>
+        <h3>O que sobreviveu</h3>
+        <ul class="facts">
+          <li><b>A MSX Association</b>, liderada por Kazuhiko Nishi, detém os direitos. Ela apoiou o <b>1chipMSX</b> em FPGA (2006) e o <b>MSX0</b>, baseado em ESP32 (à venda desde 2023), e anunciou um MSX3 em 2022, de futuro incerto.</li>
+          <li><b>Os jogos</b> voltaram: no Virtual Console do Wii japonês (2007–2009), Metal Gear entre eles, e no Project EGG.</li>
+          <li><b>Emuladores</b>: openMSX (2002), blueMSX (2003) e o WebMSX, do brasileiro Paulo Peccin. O Ok-Prompt se junta a eles.</li>
+          <li><b>O Brasil</b> manteve a chama acesa: os encontros MSXRio desde 1997 (o 45º em abril de 2024), a lista de discussão MSXBR-L e os sites que preservaram as ROMs e os esquemas.</li>
+        </ul>
+      </section>
+
+      <section class="chapter try">
+        <h2>Experimente</h2>
+        <p>
+          O Ok-Prompt dá boot no C-BIOS livre como MSX1, MSX2 (V9938) ou
+          MSX2+ (V9958), escolhido em <b>System ROM</b>; o C-BIOS inicia
+          cartuchos. Para conhecer o MSX BASIC, um Expert ou um Hotbit, carregue
+          ali um dump da ROM da sua própria máquina: elas têm direitos autorais e
+          não vêm incluídas. Depois digite <code>PRINT "Olá, MSX"</code>. Num
+          MSX2, o terminal do cartucho de modem liga para as BBSes em 80 colunas.
+        </p>
+        <a class="cta" href="../">Abrir o MSX →</a>
+      </section>
+
+      <section id="sources" class="chapter sources">
+        <h2>Fontes</h2>
+        <ul>
+          <li><a href="https://en.wikipedia.org/wiki/MSX">MSX</a>, <a href="https://pt.wikipedia.org/wiki/MSX">MSX (português)</a>, <a href="https://en.wikipedia.org/wiki/MSX_character_set">MSX character set</a>, <a href="https://en.wikipedia.org/wiki/List_of_MSX_computers">List of MSX computers</a> — Wikipédia</li>
+          <li><a href="https://en.wikipedia.org/wiki/Texas_Instruments_TMS9918">TMS9918</a>, <a href="https://www.msx.org/wiki/PPI">PPI</a>, <a href="https://msx.org/wiki/Data_for_MSX_description_from_Main-ROM_Bios">BIOS ID bytes</a></li>
+          <li><a href="https://en.wikipedia.org/wiki/Gradiente_Expert">Gradiente Expert</a>, <a href="https://www.msx.org/wiki/Gradiente_Expert_XP-800">Expert XP-800</a>, <a href="https://www.msx.org/wiki/Gradiente_Expert_GPC-1">Expert GPC-1</a>, <a href="https://msx.org/wiki/Gradiente_Expert_Plus">Expert Plus</a>, <a href="https://msx.org/wiki/Gradiente_Expert_DDPlus">Expert DD Plus</a></li>
+          <li><a href="https://en.wikipedia.org/wiki/Hotbit">Hotbit</a>, <a href="https://www.msx.org/wiki/Sharp_HB-8000">Sharp HB-8000</a>, <a href="https://www.msx.org/wiki/Category:Digital_Design">Digital Design (DDX)</a></li>
+          <li><a href="https://educapes.capes.gov.br/bitstream/capes/731785/1/prologica-e-a-politica-nacional-de-informatica.pdf">Prológica e a Política Nacional de Informática</a>, <a href="https://www.hardware.com.br/artigos/msx/amp/">Hardware.com.br: MSX</a>, <a href="https://en.wikipedia.org/wiki/PAL-M">PAL-M</a></li>
+          <li><a href="https://museum.ipsj.or.jp/en/computer/personal/0101.html">Sony HB-75 (IPSJ museum)</a>, <a href="https://en.wikipedia.org/wiki/Yamaha_CX5M">Yamaha CX5M</a>, <a href="https://en.wikipedia.org/wiki/Philips_VG-8020">Philips VG-8020</a>, <a href="https://en.wikipedia.org/wiki/SVI-728">SVI-728</a>, <a href="https://en.wikipedia.org/wiki/Sakhr_Software_Company">Sakhr</a>, <a href="https://msx.org/wiki/Yamaha_YIS-503IIR">Yamaha KUVT</a></li>
+          <li><a href="https://msx.org/wiki/The_History_of_MSX-DOS">The History of MSX-DOS</a>, <a href="https://en.wikipedia.org/wiki/MSX-DOS">MSX-DOS</a>, <a href="https://map.grauw.nl/resources/dos2_functioncalls.php">MSX-DOS 2 function calls</a>, <a href="https://en.wikipedia.org/wiki/CP/M">CP/M</a>, <a href="https://github.com/Konamiman/Nextor">Nextor</a></li>
+          <li><a href="https://archive.org/download/microsistemas/MicroSistemas065_text.pdf">Micro Sistemas 65</a>, <a href="https://msx.org/wiki/Konami_SCC">Konami SCC</a>, <a href="https://en.wikipedia.org/wiki/Metal_Gear_(video_game)">Metal Gear</a>, <a href="https://en.wikipedia.org/wiki/Gradius_(video_game)">Gradius</a></li>
+          <li>Do MSX2 ao turbo R: <a href="https://www.msx.org/wiki/MSX2">MSX2</a>, <a href="https://www.msx.org/wiki/MSX2%2B">MSX2+</a>, <a href="https://www.msx.org/wiki/MSX_turbo_R">MSX turbo R</a>, <a href="https://www.msx.org/wiki/R800">R800</a>, <a href="https://www.msx.org/wiki/Yamaha_V9938">V9938</a>, <a href="https://www.msx.org/wiki/Yamaha_V9958">V9958</a>, <a href="https://www.msx.org/wiki/Philips_NMS_8250">NMS 8250</a>, <a href="https://www.msx.org/wiki/Panasonic_FS-A1GT">FS-A1GT</a>, <a href="https://heise.de/-10257462">heise</a>, <a href="https://map.grauw.nl/resources/msx_io_ports.php">MSX I/O ports</a>, <a href="https://msx.org/wiki/Category:CIEL/ACVS">CIEL/ACVS</a></li>
+          <li>Disquetes: <a href="https://www.msx.org/wiki/Disk-ROM_BIOS">Disk-ROM BIOS</a>, <a href="https://www.msx.org/wiki/MSX-DOS_1">MSX-DOS 1</a>, <a href="https://www.msx.org/wiki/MSX-DOS_2">MSX-DOS 2</a>, <a href="https://www.msx.org/wiki/SOLX-DOS">SOLX-DOS</a>, <a href="https://www.msx.org/wiki/Nextor">Nextor</a>, <a href="https://msx.org/wiki/Microsol_CDX-2">Microsol CDX-2</a>, <a href="https://msx.org/wiki/Digital_Design_Drive-Interface_DDX">DDX</a>, <a href="https://msx.org/wiki/Gradiente_Expert_DDPlus">Expert DD Plus</a>, <a href="https://msx.org/node/19830">FAST!DiskROM</a>, <a href="https://github.com/openMSX/openMSX/tree/master/share/extensions">openMSX extensions</a></li>
+          <li>O fim: <a href="https://en.wikipedia.org/wiki/MSX">MSX (Wikipedia)</a>, <a href="https://pt.wikipedia.org/wiki/Pol%C3%ADtica_Nacional_de_Inform%C3%A1tica">Política Nacional de Informática</a>, <a href="https://www2.camara.leg.br/legin/fed/lei/1991/lei-8248-23-outubro-1991-367204-publicacaooriginal-1-pl.html">Lei 8.248</a>, <a href="https://www.hardware.com.br/?p=63792">O MSX não morreu</a>, <a href="https://msx.org/wiki/Category:Sharp_(Epcom)">Sharp (Epcom)</a>, <a href="https://en.wikipedia.org/wiki/Phoenix_Technologies">Phoenix Technologies</a>, <a href="https://en.wikipedia.org/wiki/Clean-room_design">Clean-room design</a>, <a href="https://www.sympla.com.br/msxrio-2024__2357457">MSXRio 2024</a></li>
+          <li>Medições: as ROMs originais do Expert 1.0, 1.1, DD Plus e Hotbit 1.1, o kit MSX2+ e quatro ROMs de disco, rodando no Ok-Prompt (<code>tests/real-bios.test.ts</code>).</li>
+        </ul>
+      </section>
+
+      <footer class="foot">
+        Ok-Prompt · © 2026 Eduardo Stern · <a href="./manual.html">Manual</a> ·
+        irmãos: <a href="https://a-prompt.stern.workers.dev">A-Prompt</a> (CP/M),
+        <a href="https://k-prompt.stern.workers.dev">K-Prompt</a> (ZX Spectrum, TK90X) ·
+        <a href="https://github.com/eduardostern/Ok-Prompt">Código-fonte</a> ·
+        MSX é uma marca da MSX Licensing Corporation
+      </footer>
+    </div>
+    <script type="module" src="../src/history.ts"></script>
+  </body>
+</html>

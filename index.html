@@ -12,7 +12,7 @@
     <div class="room">
       <header class="top">
         <h1 class="brand"><span class="ok">Ok</span>-Prompt</h1>
-        <p class="tag">An MSX in your browser. Drop in a cartridge and play. <a href="./manual.html">Manual</a> · <a href="./history.html">What is MSX? →</a></p>
+        <p class="tag">An MSX in your browser. Drop in a cartridge and play. <a href="./manual.html">Manual</a> · <a href="./history.html">What is MSX? →</a> · <a href="./pt/manual.html" lang="pt-BR">Em português</a></p>
       </header>
 
       <main class="stage">
@@ -123,15 +123,27 @@
               <p class="note tape-note" id="tape-note"></p>
             </div>
             <div class="tape disk" id="disk" hidden>
-              <span class="slot-no" aria-hidden="true">💾</span>
-              <button class="cart" type="button" id="disk-load" title="Insert a disk (.dsk or .zip)">
-                <span class="cart-label" id="disk-label">No disk: click or drop a .dsk</span>
+              <span class="slot-no" aria-hidden="true" title="Drive A:">A:</span>
+              <button class="cart" type="button" id="disk-load" title="Insert a disk in drive A: (.dsk or .zip)">
+                <span class="cart-label" id="disk-label">No disk</span>
               </button>
-              <span class="tape-pos" id="disk-led"></span>
+              <span class="tape-pos"></span>
               <div class="tape-keys">
                 <button type="button" id="disk-save" title="Download the disk (with what was written on it)">⤓</button>
-                <button type="button" id="disk-blank" title="Insert a blank 720K disk">＋ Blank</button>
+                <button type="button" id="disk-blank" class="disk-blank" title="Insert a blank 720K disk">＋ Blank</button>
                 <button type="button" class="eject" id="disk-eject" title="Eject">⏏</button>
+              </div>
+            </div>
+            <div class="tape disk" id="disk-b" hidden>
+              <span class="slot-no" aria-hidden="true" title="Drive B:">B:</span>
+              <button class="cart" type="button" id="disk-b-load" title="Insert a disk in drive B: (.dsk or .zip)">
+                <span class="cart-label" id="disk-b-label">No disk</span>
+              </button>
+              <span class="tape-pos"></span>
+              <div class="tape-keys">
+                <button type="button" id="disk-b-save" title="Download the disk (with what was written on it)">⤓</button>
+                <button type="button" id="disk-b-blank" class="disk-blank" title="Insert a blank 720K disk">＋ Blank</button>
+                <button type="button" class="eject" id="disk-b-eject" title="Eject">⏏</button>
               </div>
             </div>
             <input id="rom-file" type="file" accept=".rom,.mx1,.mx2,.bin,.cas,.tsx,.dsk,.zip" hidden />

@@ -35,11 +35,11 @@ ${body}
 }
 
 /** DSKIO: read (carry clear) or write `n` sectors from `sector` at `addr`; error code to `flag`. */
-const dskio = (write: boolean, n: number, sector: number, addr: number, flag: number) => `
+const dskio = (write: boolean, n: number, sector: number, addr: number, flag: number, drive = 0) => `
         ld hl, ${addr}
         ld de, ${sector}
         ld b, ${n}
-        xor a
+        ld a, ${drive}
         ld c, 0F9h
         ${write ? 'scf' : 'or a'}
         call 4010h
@@ -75,6 +75,22 @@ describe('the disk drive', () => {
       expect(ram(0xc400, 8)).toEqual([0, 7, 14, 21, 28, 35, 42, 49]);
     });
   }
+
+  it('reads drive B from its own disk, and finds B empty without one', () => {
+    // A ROM that asks for drive B (A = 1) got drive A's disk before there were two drives.
+    const other = new Disk(blankDisk(), 'b.dsk');
+    other.data[3 * SECTOR] = 0x99;
+    const m = new Msx(MSX2);
+    m.setDiskRom(diskRom(`${dskio(false, 1, 3, 0xc400, 0xc3f0, 1)}
+${dskio(false, 1, 3, 0xc600, 0xc3f4, 0)}`));
+    m.insertDisk(sample());
+    m.insertDisk(other, 1);
+    m.powerCycle();
+    for (let i = 0; i < 800 && m.slots.read(0xc3ff) !== 1; i++) m.runFrame();
+    expect([m.slots.read(0xc400), m.slots.read(0xc600 + 1)]).toEqual([0x99, 7]); // B's byte; A's pattern
+    const empty = boot(MSX2, dskio(false, 1, 0, 0xc400, 0xc3f0, 1), sample());
+    expect(empty.ram(0xc3f0, 2)).toEqual([2, 1]); // drive B: not ready
+  });
 
   it('writes sectors, and tells the page', () => {
     const disk = sample();

@@ -422,7 +422,7 @@ async function start(): Promise<void> {
   const shelfList = $('shelf-list');
   /** Highlights the shelf entries that are in a slot. */
   function markShelf(): void {
-    const inSlots = [...msx.cartridges.map((c) => c?.name), msx.tape?.name, msx.disk?.name];
+    const inSlots = [...msx.cartridges.map((c) => c?.name), msx.tape?.name, ...msx.disks.map((d) => d?.name)];
     for (const li of shelfList.children) {
       li.classList.toggle('inserted', inSlots.includes((li as HTMLElement).dataset.name));
     }
@@ -454,7 +454,8 @@ async function start(): Promise<void> {
       if (isTape(cart.name)) {
         button('shelf-cart', cart.name, `Put the tape ${cart.name} in the tape deck`, () => insertTape(cart));
       } else if (isDisk(cart.name)) {
-        button('shelf-cart', cart.name, `Put the disk ${cart.name} in the drive`, () => insertDiskFile(cart));
+        button('shelf-cart', cart.name, `Put the disk ${cart.name} in drive A`, () => insertDiskFile(cart));
+        button('shelf-slot', 'B', 'Put it in drive B', () => insertDiskFile(cart, true, 1));
       } else {
         button('shelf-cart', cart.name, `Insert ${cart.name} in slot 1`, () => void put(1));
         button('shelf-slot', '2', 'Insert in slot 2', () => void put(2));
@@ -681,7 +682,6 @@ async function start(): Promise<void> {
   const diskRomFile = $<HTMLInputElement>('diskrom-file');
   const diskNote = $('diskrom-note');
   const diskNoteText = diskNote.textContent ?? '';
-  const diskEl = $('disk');
   const diskFile = $<HTMLInputElement>('disk-file');
   const ownDiskRom = () => diskRoms.find((r) => r.name === settings.diskRom);
   const showDiskRoms = () => {
@@ -689,7 +689,7 @@ async function start(): Promise<void> {
     for (const r of diskRoms) diskSel.add(new Option(r.name, r.name));
     diskSel.value = ownDiskRom() ? settings.diskRom : '';
     $('diskrom-remove').hidden = !ownDiskRom();
-    diskEl.hidden = !ownDiskRom();
+    for (const { id } of [{ id: 'disk' }, { id: 'disk-b' }]) $(id).hidden = !ownDiskRom();
   };
   const useDiskRom = (name: string) => {
     settings.diskRom = diskRoms.some((r) => r.name === name) ? name : '';
@@ -740,29 +740,35 @@ async function start(): Promise<void> {
   msx.setDiskRom(ownDiskRom()?.data ?? null);
   showDiskRoms();
 
+  const DRIVES = [{ id: 'disk', letter: 'A' }, { id: 'disk-b', letter: 'B' }] as const;
+  type Drive = 0 | 1;
   function showDisk(): void {
-    const d = msx.disk;
-    diskEl.classList.toggle('full', Boolean(d));
-    $('disk-label').textContent = d ? `${d.name} · ${Math.round(d.data.length / 1024)}K` : 'No disk: click or drop a .dsk';
+    DRIVES.forEach(({ id }, n) => {
+      const d = msx.disks[n];
+      $(id).classList.toggle('full', Boolean(d));
+      $(`${id}-label`).textContent = d ? `${d.name} · ${Math.round(d.data.length / 1024)}K` : 'No disk: click or drop a .dsk';
+    });
     markShelf();
   }
-  function insertDiskFile(stored: StoredCart | null, persist = true): void {
-    msx.insertDisk(stored ? new Disk(stored.data, stored.name) : null);
-    if (persist) void saveDisk(stored);
+  function insertDiskFile(stored: StoredCart | null, persist = true, drive: Drive = 0): void {
+    msx.insertDisk(stored ? new Disk(stored.data, stored.name) : null, drive);
+    if (persist) void saveDisk(stored, drive);
     showDisk();
   }
   // Written disks are kept, a moment after the last write.
-  let diskSaveTimer = 0;
+  const diskSaveTimers = [0, 0];
   msx.onDiskWritten = (d) => {
-    clearTimeout(diskSaveTimer);
-    diskSaveTimer = window.setTimeout(() => {
+    const drive = msx.disks.indexOf(d);
+    if (drive < 0) return;
+    clearTimeout(diskSaveTimers[drive]);
+    diskSaveTimers[drive] = window.setTimeout(() => {
       d.dirty = false;
       const stored = { name: d.name, data: d.data.slice() };
-      void saveDisk(stored);
+      void saveDisk(stored, drive);
       void shelve(stored).then(showShelf);
     }, 500);
   };
-  $('disk-load').addEventListener('click', () => diskFile.click());
+  let diskTarget: Drive = 0;
   diskFile.addEventListener('change', async () => {
     const file = diskFile.files?.[0];
     diskFile.value = '';
@@ -770,24 +776,30 @@ async function start(): Promise<void> {
     try {
       const d = await readRom(file, 2 * 1024 * 1024, 'a disk');
       if (d.data.length % SECTOR) throw new Error('not a disk image (not whole 512-byte sectors)');
-      insertDiskFile(d);
+      insertDiskFile(d, true, diskTarget);
       await shelve(d);
       void showShelf();
     } catch (e) {
       diskNote.textContent = `Could not load ${file.name}: ${(e as Error).message}`;
     }
   });
-  $('disk-blank').addEventListener('click', () => {
-    const stamp = new Date().toISOString().slice(0, 16).replace(/\D/g, '');
-    insertDiskFile({ name: `disk-${stamp}.dsk`, data: blankDisk() });
+  DRIVES.forEach(({ id }, i) => {
+    const n = i as Drive;
+    $(`${id}-load`).addEventListener('click', () => { diskTarget = n; diskFile.click(); });
+    $(`${id}-blank`).addEventListener('click', () => {
+      const stamp = new Date().toISOString().slice(0, 16).replace(/\D/g, '');
+      insertDiskFile({ name: `disk-${stamp}${n ? '-b' : ''}.dsk`, data: blankDisk() }, true, n);
+    });
+    $(`${id}-save`).addEventListener('click', () => {
+      const d = msx.disks[n];
+      if (d) download(d.name, d.data);
+    });
+    $(`${id}-eject`).addEventListener('click', () => insertDiskFile(null, true, n));
   });
-  $('disk-save').addEventListener('click', () => {
-    const d = msx.disk;
-    if (d) download(d.name, d.data);
-  });
-  $('disk-eject').addEventListener('click', () => insertDiskFile(null));
-  const storedDisk = await loadDisk();
-  if (storedDisk) insertDiskFile(storedDisk, false);
+  for (const n of [0, 1] as const) {
+    const stored = await loadDisk(n);
+    if (stored) insertDiskFile(stored, false, n);
+  }
   showDisk();
 
   // ---- keyboard and gamepad ------------------------------------------------
@@ -845,7 +857,7 @@ async function start(): Promise<void> {
   const statesNote = $('states-note');
   /** What is running, in a few words, to tell the states apart. */
   const whatRuns = () => {
-    const parts = [...msx.cartridges.map((c) => c?.name), msx.tape?.name, msx.disk?.name].filter(Boolean);
+    const parts = [...msx.cartridges.map((c) => c?.name), msx.tape?.name, ...msx.disks.map((d) => d?.name)].filter(Boolean);
     const b = ownBios();
     return parts.length ? parts.join(', ') : b ? label(b) : biosSel.selectedOptions[0]?.textContent ?? 'C-BIOS';
   };
@@ -915,8 +927,7 @@ async function start(): Promise<void> {
       msx.loadState(st.machine as MachineState);
       const t = msx.tape;
       void saveTape(t ? { name: t.file().name, data: t.file().data.slice() } : null);
-      const d = msx.disk;
-      void saveDisk(d ? { name: d.name, data: d.data.slice() } : null);
+      msx.disks.forEach((d, n) => void saveDisk(d ? { name: d.name, data: d.data.slice() } : null, n));
       showTape();
       showDisk();
       if (!running) {
@@ -1062,6 +1073,67 @@ async function start(): Promise<void> {
     caps.classList.toggle('on', msx.ppi.capsLamp);
   };
   requestAnimationFrame(loop);
+
+  // ---- files from the page's link ----------------------------------------------
+  //
+  // ok-prompt…/?rom=URL&rom2=URL&tape=URL&disk=URL&diskb=URL&bios=cbios2
+  // Each URL is fetched by the browser, so its site must allow it (CORS):
+  // GitHub, archive.org and the like do; many ROM archives do not.
+
+  const params = new URLSearchParams(location.search);
+  const fromLink = async (key: string): Promise<StoredCart | null> => {
+    const url = params.get(key);
+    if (!url) return null;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) throw new Error(`the server answered ${res.status}`);
+      const name = decodeURIComponent(new URL(url, location.href).pathname.split('/').pop() || key) || key;
+      return await readRom(new File([await res.arrayBuffer()], name), 4 * 1024 * 1024, 'the MSX');
+    } catch (e) {
+      const why = e instanceof TypeError
+        ? 'the site does not let other pages fetch its files (CORS); download it and drop it here instead'
+        : (e as Error).name === 'TimeoutError' ? 'no answer in 20 seconds' : (e as Error).message;
+      throw new Error(`Could not load ${url}: ${why}`);
+    }
+  };
+  // In the background: the MSX starts while the files come.
+  const loadLinked = async () => {
+    const linkBios = params.get('bios');
+    if (linkBios && (BUILT_IN[linkBios] || biosList.some((b) => b.name === linkBios))) await useBios(linkBios);
+    for (const [key, slot] of [['rom', 1], ['rom2', 2]] as const) {
+      try {
+        const rom = await fromLink(key);
+        if (rom) {
+          insert(slot, rom);
+          void shelve(rom).then(showShelf);
+        }
+      } catch (e) {
+        alertSlot(slot, (e as Error).message);
+      }
+    }
+    try {
+      const tape = await fromLink('tape');
+      if (tape) {
+        insertTape(tape);
+        void shelve(tape).then(showShelf);
+      }
+    } catch (e) {
+      tapeNote.textContent = (e as Error).message;
+    }
+    for (const [key, drive] of [['disk', 0], ['diskb', 1]] as const) {
+      try {
+        const disk = await fromLink(key);
+        if (disk) {
+          insertDiskFile(disk, true, drive);
+          void shelve(disk).then(showShelf);
+          if (!msx.hasDiskDrive) diskNote.textContent = 'A disk came with the link: load a disk ROM to use it.';
+        }
+      } catch (e) {
+        diskNote.textContent = (e as Error).message;
+      }
+    }
+  };
+  if (params.size) void loadLinked();
 
   // ---- first power-on ------------------------------------------------------
 

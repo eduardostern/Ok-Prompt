@@ -37,6 +37,15 @@ import { Disk, DiskRomSlot, DSKCHG, DSKFMT, DSKIO, dpb, GETDPB, NOT_READY, RECOR
 import { Ym2413 } from './ym2413';
 import { Vdp } from './vdp';
 
+type SavedDisk = { name: string; data: Uint8Array; changed: boolean };
+const saveDisk = (d: Disk | null): SavedDisk | null => (d ? { name: d.name, data: d.data.slice(), changed: d.changed } : null);
+const loadDisk = (s: SavedDisk | null): Disk | null => {
+  if (!s) return null;
+  const d = new Disk(s.data, s.name);
+  d.changed = s.changed;
+  return d;
+};
+
 /** A machine's state (Msx.saveState), structured-clonable. */
 export interface MachineState {
   version: 1;
@@ -60,7 +69,8 @@ export interface MachineState {
   fm: ChipState | null;
   carts: ({ name: string; state: ChipState; scc: ChipState | null } | null)[];
   tape: TapeState | null;
-  disk: { name: string; data: Uint8Array; changed: boolean } | null;
+  disk: SavedDisk | null;
+  diskB?: SavedDisk | null;
   printer: number[];
 }
 
@@ -151,8 +161,8 @@ export class Msx {
   private fmWanted = false;
   /** The disk drive's ROM in slot 3-1, when there is one. */
   private diskSlot: DiskRomSlot | null = null;
-  /** The disk in drive A. */
-  disk: Disk | null = null;
+  /** The disks in drives A and B. */
+  readonly disks: (Disk | null)[] = [null, null];
   /**
    * Port F4h on an MSX2+: the BIOS sets bit 7 once it has started, and a
    * reset (unlike power-off) keeps it, so the logo shows only at power-on.
@@ -279,9 +289,14 @@ export class Msx {
     return this.diskSlot !== null;
   }
 
-  /** Puts a disk in the drive (null takes it out). */
-  insertDisk(disk: Disk | null): void {
-    this.disk = disk;
+  /** The disk in drive A. */
+  get disk(): Disk | null {
+    return this.disks[0];
+  }
+
+  /** Puts a disk in drive A (0) or B (1); null takes it out. */
+  insertDisk(disk: Disk | null, drive: 0 | 1 = 0): void {
+    this.disks[drive] = disk;
     if (disk) disk.changed = true;
   }
 
@@ -473,7 +488,9 @@ export class Msx {
   private diskTrap(pc: number): boolean {
     if (!this.diskRomShown()) return false;
     const cpu = this.cpu;
-    const disk = this.disk;
+    // The drive: A for DSKIO, DSKCHG and GETDPB, D for DSKFMT; 0 is A:, 1 is B:.
+    const drive = pc === DSKFMT ? cpu.d : cpu.a;
+    const disk = drive < this.disks.length ? this.disks[drive] : null;
     let error = -1;
     const fillDpb = (base: number) => {
       dpb(disk!.geometry()).forEach((b, i) => this.callerWrite((base + 1 + i) & 0xffff, b));
@@ -567,7 +584,8 @@ export class Msx {
       fm: this.fm ? (this.fm.save() as ChipState) : null,
       carts: this.cartridges.map((c) => (c ? { name: c.name, state: grab(c, ['rom']), scc: c.scc ? grab(c.scc, ['out']) : null } : null)),
       tape: this.tape?.saveState() ?? null,
-      disk: this.disk ? { name: this.disk.name, data: this.disk.data.slice(), changed: this.disk.changed } : null,
+      disk: saveDisk(this.disks[0]),
+      diskB: saveDisk(this.disks[1]),
       printer: this.printer.bytes.slice(),
     };
   }
@@ -601,8 +619,8 @@ export class Msx {
       if (c.scc && saved.scc) put(c.scc, saved.scc);
     });
     this.tape = s.tape ? Tape.fromState(s.tape) : null;
-    this.disk = s.disk ? new Disk(s.disk.data, s.disk.name) : null;
-    if (this.disk && s.disk) this.disk.changed = s.disk.changed;
+    this.disks[0] = loadDisk(s.disk);
+    this.disks[1] = loadDisk(s.diskB ?? null);
     this.printer.bytes = s.printer.slice();
   }
 

@@ -7,7 +7,7 @@
  *   "bios:<name>"   the player's own system ROMs (C-BIOS needs no entry)
  *   "tape"          the cassette in the tape deck, with what was recorded
  *   "diskrom:<name>" the player's own disk ROMs
- *   "disk"          the disk in the drive, with what was written
+ *   "disk", "disk:b" the disks in drives A and B, with what was written
  *   "sram:<name>"   a cartridge's battery-backed RAM (its saved games)
  *   "state:<n>"     save states 1-4
  */
@@ -84,8 +84,10 @@ export const loadAllDiskRoms = async (): Promise<StoredCart[]> => {
   return (all ?? []).sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const saveDisk = (disk: StoredCart | null) => put('disk', disk);
-export const loadDisk = () => run<StoredCart>('readonly', (s) => s.get('disk'));
+/** Drive A keeps the old key "disk"; drive B is "disk:b". */
+const diskKey = (drive: number) => (drive ? 'disk:b' : 'disk');
+export const saveDisk = (disk: StoredCart | null, drive = 0) => put(diskKey(drive), disk);
+export const loadDisk = (drive = 0) => run<StoredCart>('readonly', (s) => s.get(diskKey(drive)));
 
 const SRAM = 'sram:';
 export const saveSram = (name: string, data: Uint8Array) => put(SRAM + name, { name, data });
